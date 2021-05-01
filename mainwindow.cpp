@@ -133,6 +133,28 @@ void MainWindow::on_treeWidgetDuplicates_customContextMenuRequested(const QPoint
 
             }
         });
+        contextMenu.addAction("Keep this file and move others", [&]() {
+            qWarning() << "Would keep: " << file;
+            auto dest = QFileDialog::getExistingDirectory(this, "Move location", QString(),
+                                                          QFileDialog::DontUseNativeDialog | QFileDialog::ShowDirsOnly);
+            if (dest.isEmpty())
+                return;
+            auto siblingCount = curItem->parent()->childCount();
+            std::vector<QTreeWidgetItem *> siblings;
+            for (int i = siblingCount - 1; i >= 0; i--) {
+                auto item = curItem->parent()->child(i);
+                if (item == curItem)
+                    continue;
+                if (!QFile::rename(item->text(0), dest + QDir::separator() + QFileInfo(item->text(0)).fileName())) {
+                    QMessageBox::warning(this, "Error deleting file",
+                                         "An error occurred while moving file, please ensure the file isn't read-only and that you have the requisite permissions.\n\nFile: " +
+                                         item->text(0));
+                    continue;
+                }
+                curItem->parent()->removeChild(item);
+
+            }
+        });
         contextMenu.exec(QCursor::pos());
         return;
     }
