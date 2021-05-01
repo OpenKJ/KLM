@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.5)
-
-project(KaraokeLibraryManager LANGUAGES CXX C)
+set(CMAKE_TOOLCHAIN_FILE ${CMAKE_CURRENT_SOURCE_DIR}/vcpkg/scripts/buildsystems/vcpkg.cmake CACHE STRING "Vcpkg toolchain file")
+project(klm LANGUAGES CXX C)
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
@@ -23,32 +23,35 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 #            ${CMAKE_CURRENT_SOURCE_DIR}/path/to/libssl.so)
 #    endif()
 #endif()
+
 find_package(PkgConfig)
+
+find_package(fmt REQUIRED)
+find_package(miniz CONFIG REQUIRED)
+
+pkg_check_modules(TAGLIB REQUIRED IMPORTED_TARGET taglib)
 
 find_package(QT NAMES Qt6 Qt5 COMPONENTS Widgets REQUIRED)
 find_package(Qt${QT_VERSION_MAJOR} COMPONENTS Widgets Sql REQUIRED)
-pkg_check_modules(TAGLIB REQUIRED IMPORTED_TARGET taglib)
 
-  add_executable(KaraokeLibraryManager
-    main.cpp
-    mainwindow.cpp
-    mainwindow.h
-    mainwindow.ui
-    karaokefile.cpp
-    karaokefile.h
-    karaokefileinfo.cpp
-    karaokefileinfo.h
-    mzarchive.cpp
-    mzarchive.h
-    okarchive.cpp
-    okarchive.h
-    miniz/miniz.c
-    miniz/miniz.h
-    tagreader.cpp
-    tagreader.h
-    dupefindercrc.cpp
-    dupefindercrc.h
-  )
+add_executable(klm
+  main.cpp
+  mainwindow.cpp
+  mainwindow.h
+  mainwindow.ui
+  karaokefile.cpp
+  karaokefile.h
+  karaokefileinfo.cpp
+  karaokefileinfo.h
+  mzarchive.cpp
+  mzarchive.h
+  okarchive.cpp
+  okarchive.h
+  tagreader.cpp
+  tagreader.h
+  dupefindercrc.cpp
+  dupefindercrc.h
+)
 
 
-target_link_libraries(KaraokeLibraryManager PRIVATE Qt${QT_VERSION_MAJOR}::Widgets Qt${QT_VERSION_MAJOR}::Sql PkgConfig::TAGLIB)
+target_link_libraries(klm PRIVATE Qt${QT_VERSION_MAJOR}::Widgets Qt${QT_VERSION_MAJOR}::Sql fmt::fmt miniz::miniz PkgConfig::TAGLIB)

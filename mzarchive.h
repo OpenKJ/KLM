@@ -25,7 +25,6 @@
 #include <QObject>
 #include <QStringList>
 #include <okarchive.h>
-//#include <quazip.h>
 
 
 class MzArchive : public QObject
