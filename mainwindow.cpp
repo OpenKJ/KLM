@@ -2,11 +2,13 @@
 #include "./ui_mainwindow.h"
 
 #include <QDirIterator>
-#include <QDebug>
 #include <QFileDialog>
 #include <set>
 #include <QTreeWidgetItem>
 #include <QMessageBox>
+#include <QProgressDialog>
+#include <spdlog/spdlog.h>
+
 
 MainWindow::MainWindow(QWidget *parent)
         : QMainWindow(parent), ui(new Ui::MainWindow) {
@@ -20,6 +22,12 @@ MainWindow::MainWindow(QWidget *parent)
     connect(dfCrc, &DupeFinderCRC::finished, workerThreadCrc, &QThread::quit);
     connect(ui->pushButtonBrowse, &QPushButton::clicked, [&]() { browseForPath(); });
     connect(ui->pushButtonCrc, &QPushButton::clicked, [&]() { runCrcScan(); });
+    connect(ui->treeWidgetDuplicates, &QTreeWidget::customContextMenuRequested, this,
+            &MainWindow::duplicatesContextMenuRequested);
+    connect(ui->lineEditPath, &QLineEdit::textChanged, [&](const QString &text) {
+        m_path = ui->lineEditPath->text();
+    });
+
     connect(dfCrc, &DupeFinderCRC::foundDuplicate, this, [&](const QString &crc, const QStringList &paths) {
         auto *item = new QTreeWidgetItem(static_cast<QTreeWidget *>(nullptr), QStringList{
                 "Matches: " + QString::number(paths.size()) + " - Checksum: " + crc});
@@ -28,6 +36,17 @@ MainWindow::MainWindow(QWidget *parent)
         }
         item->setData(1, Qt::DisplayRole, paths.size());
         ui->treeWidgetDuplicates->addTopLevelItem(item);
+    }, Qt::QueuedConnection);
+    connect(dfCrc, &DupeFinderCRC::noDupesFound, this, [&]() {
+        QMessageBox::information(this, "No duplicates found",
+                                 "Scan did not find any files with identical CRC signatures.");
+    }, Qt::QueuedConnection);
+    connect(dfCrc, &DupeFinderCRC::finished, this, [&]() {
+        ui->treeWidgetDuplicates->expandAll();
+        ui->treeWidgetDuplicates->sortByColumn(1, Qt::DescendingOrder);
+        for (int i = 0; i < ui->treeWidgetDuplicates->topLevelItemCount(); i++) {
+            ui->treeWidgetDuplicates->topLevelItem(i)->sortChildren(0, Qt::AscendingOrder);
+        }
     }, Qt::QueuedConnection);
 }
 
@@ -39,56 +58,30 @@ void MainWindow::browseForPath() {
     m_path = QFileDialog::getExistingDirectory(this, "Select karaoke library path", QString(),
                                                QFileDialog::DontUseNativeDialog | QFileDialog::ShowDirsOnly);
     ui->lineEditPath->setText(m_path);
-    qInfo() << "Path: " << m_path;
+    spdlog::info("User selected path: {}", m_path.toStdString());
+
 }
 
 void MainWindow::runCrcScan() {
-    // todo: add warning dialog on no path
-    if (m_path == QString())
+    if (m_path == QString()) {
+        QMessageBox::warning(this, "No directory selected", "You must select a directory before running a scan");
         return;
+    }
     ui->treeWidgetDuplicates->clear();
     dfCrc->setPath(m_path);
-    prgDlg = new QProgressDialog("Processing...", QString(), 0, 0, this);
+    auto prgDlg = new QProgressDialog("Processing...", QString(), 0, 0, this);
     prgDlg->setWindowTitle("Processing...");
-    connect(dfCrc, &DupeFinderCRC::findingFilesStarted, this, [&]() {
-        prgDlg->setLabelText("Finding karaoke files");
-        prgDlg->setMaximum(0);
-        prgDlg->setModal(true);
-        prgDlg->show();
-    }, Qt::QueuedConnection);
-    connect(dfCrc, &DupeFinderCRC::gettingChecksumsStarted, this, [&](int num) {
-        prgDlg->setMaximum(num);
-        prgDlg->setLabelText("Calculating CRC values");
-    }, Qt::QueuedConnection);
-    connect(dfCrc, &DupeFinderCRC::gettingChecksumsProgress, this, [&](int pos) {
-        prgDlg->setValue(pos);
-    }, Qt::QueuedConnection);
-    connect(dfCrc, &DupeFinderCRC::dupeFindStarted, this, [&](int num) {
-        prgDlg->setLabelText("Checking for duplicate signatures");
-        prgDlg->setValue(0);
-        prgDlg->setMaximum(num);
-    }, Qt::QueuedConnection);
-    connect(dfCrc, &DupeFinderCRC::dupeFindProgress, this, [&](int pos) {
-        prgDlg->setValue(pos);
-    }, Qt::QueuedConnection);
-    connect(dfCrc, &DupeFinderCRC::finished, this, [&]() {
-        ui->treeWidgetDuplicates->expandAll();
-        ui->treeWidgetDuplicates->sortByColumn(1, Qt::DescendingOrder);
-        for (int i = 0; i < ui->treeWidgetDuplicates->topLevelItemCount(); i++) {
-            ui->treeWidgetDuplicates->topLevelItem(i)->sortChildren(0, Qt::AscendingOrder);
-        }
-        if (prgDlg)
-            prgDlg->hide();
-    }, Qt::QueuedConnection);
-    connect(dfCrc, &DupeFinderCRC::noDupesFound, this, [&]() {
-        QMessageBox::information(this, "No duplicates found",
-                                 "Scan did not find any files with identical CRC signatures.");
-    }, Qt::QueuedConnection);
+    prgDlg->setModal(true);
+    prgDlg->show();
+    connect(dfCrc, &DupeFinderCRC::newStepStarted, prgDlg, &QProgressDialog::setLabelText, Qt::QueuedConnection);
+    connect(dfCrc, &DupeFinderCRC::progressValChanged, prgDlg, &QProgressDialog::setValue, Qt::QueuedConnection);
+    connect(dfCrc, &DupeFinderCRC::stepMaxValChanged, prgDlg, &QProgressDialog::setMaximum, Qt::QueuedConnection);
+    connect(dfCrc, &DupeFinderCRC::finished, prgDlg, &QProgressDialog::deleteLater, Qt::QueuedConnection);
     workerThreadCrc->start();
 }
 
 
-void MainWindow::on_treeWidgetDuplicates_customContextMenuRequested(const QPoint &pos) {
+void MainWindow::duplicatesContextMenuRequested(const QPoint &pos) {
     auto selItems = ui->treeWidgetDuplicates->selectedItems();
     if (selItems.empty())
         return;
@@ -114,7 +107,6 @@ void MainWindow::on_treeWidgetDuplicates_customContextMenuRequested(const QPoint
         auto file = curItem->text(0);
         QMenu contextMenu(this);
         contextMenu.addAction("Delete this file", [&]() {
-            qWarning() << "Would delete: " << file;
             if (QFile::remove(file))
                 curItem->parent()->removeChild(curItem);
             else
@@ -122,7 +114,6 @@ void MainWindow::on_treeWidgetDuplicates_customContextMenuRequested(const QPoint
                                      "An error occurred while deleting the file, please ensure the file isn't read-only and that you have the requisite permissions.");
         });
         contextMenu.addAction("Keep this file and delete others", [&]() {
-            qWarning() << "Would keep: " << file;
             auto siblingCount = curItem->parent()->childCount();
             std::vector<QTreeWidgetItem *> siblings;
             for (int i = siblingCount - 1; i >= 0; i--) {
@@ -140,7 +131,6 @@ void MainWindow::on_treeWidgetDuplicates_customContextMenuRequested(const QPoint
             }
         });
         contextMenu.addAction("Keep this file and move others", [&]() {
-            qWarning() << "Would keep: " << file;
             auto dest = QFileDialog::getExistingDirectory(this, "Move location", QString(),
                                                           QFileDialog::DontUseNativeDialog | QFileDialog::ShowDirsOnly);
             if (dest.isEmpty())
@@ -195,7 +185,6 @@ void MainWindow::on_treeWidgetDuplicates_customContextMenuRequested(const QPoint
             }
             item->parent()->removeChild(item);
         }
-        // todo: add multi move logic
     });
     contextMenu.exec(QCursor::pos());
 }

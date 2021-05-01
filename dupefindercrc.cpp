@@ -1,11 +1,10 @@
 #include "dupefindercrc.h"
 #include <set>
 #include <algorithm>
-#include <execution>
-#include <QDebug>
 #include <QDirIterator>
 #include <mutex>
 #include "karaokefile.h"
+#include <spdlog/spdlog.h>
 
 QString DupeFinderCRC::path() const {
     return m_path;
@@ -21,8 +20,8 @@ DupeFinderCRC::DupeFinderCRC(QObject *parent) : QObject(parent) {
 
 void DupeFinderCRC::findDupes() {
     std::set<uint32_t> crcChecksums;
-    emit findingFilesStarted();
-    qWarning() << "Getting files in " << m_path;
+    emit newStepStarted("Finding karaoke files...");
+    spdlog::info("Getting files in path: {}", m_path.toStdString());
     QStringList files;
     QDirIterator it(m_path, QDirIterator::Subdirectories);
     while (it.hasNext()) {
@@ -31,53 +30,53 @@ void DupeFinderCRC::findDupes() {
             files.push_back(it.filePath());
         }
     }
-    emit foundFiles(files.size());
-    qWarning() << "Got all files, calculating checksums";
-    emit gettingChecksumsStarted(files.size());
-    std::vector<KaraokeFile *> kfiles;
-    kfiles.reserve(files.size());
+    spdlog::info("Got all files, calculating crc32 checksums");
+    emit newStepStarted("Calculating crc32 checksums");
+    emit stepMaxValChanged(files.size());
+    std::vector<KaraokeFile *> kFiles;
+    kFiles.reserve(files.size());
     int processedFiles{0};
     for (const auto &file : files) {
-        KaraokeFile *kfile = new KaraokeFile;
-        kfile->setPath(file);
-        auto checksum = kfile->crc();
-        emit gettingChecksumsProgress(++processedFiles);
+        auto *kFile = new KaraokeFile;
+        kFile->setPath(file);
+        auto checksum = kFile->crc();
+        emit progressValChanged(++processedFiles);
         crcChecksums.insert(checksum);
-        kfiles.push_back(kfile);
+        kFiles.push_back(kFile);
     }
-    qWarning() << "Checksums calculated, finding possible duplicates";
-    emit dupeFindStarted(crcChecksums.size());
+    spdlog::info("Checksums calculated, finding duplicates");
+    emit newStepStarted("Scanning for duplicate checksums...");
+    emit stepMaxValChanged((int) crcChecksums.size());
     int processedChecksums{0};
     uint dupesFound{0};
     for (const auto crc : crcChecksums) {
-        std::vector<KaraokeFile *> newvec;
+        std::vector<KaraokeFile *> newVec;
         if (crc == 0) {
-            emit dupeFindProgress(++processedChecksums);
+            emit progressValChanged(++processedChecksums);
             continue;
         }
-        std::copy_if(kfiles.begin(), kfiles.end(), std::back_inserter(newvec), [crc](auto file) {
+        std::copy_if(kFiles.begin(), kFiles.end(), std::back_inserter(newVec), [crc](auto file) {
             return (file->crc() == crc);
         });
-        kfiles.erase(std::remove_if(kfiles.begin(), kfiles.end(), [crc](auto file) {
+        kFiles.erase(std::remove_if(kFiles.begin(), kFiles.end(), [crc](auto file) {
             return (file->crc() == crc);
-        }), kfiles.end());
-        if (newvec.size() > 1) {
+        }), kFiles.end());
+        if (newVec.size() > 1) {
             QStringList paths;
-            for (const auto &file : newvec) {
+            for (const auto &file : newVec) {
                 paths.push_back(file->path());
             }
-            QString hexvalue = QString("%1").arg(crc, 0, 16, QLatin1Char('0'));
-            emit foundDuplicate(hexvalue, paths);
+            emit foundDuplicate(QString("%1").arg(crc, 0, 16, QLatin1Char('0')), paths);
             dupesFound++;
         }
-        emit dupeFindProgress(++processedChecksums);
+        emit progressValChanged(++processedChecksums);
     }
     if (dupesFound == 0)
             emit noDupesFound();
-    qWarning() << "Done";
-    for (auto kfile : kfiles)
-        delete kfile;
-    kfiles.clear();
-    kfiles.shrink_to_fit();
+    spdlog::info("Processing complete");
+    for (auto kFile : kFiles)
+        delete kFile;
+    kFiles.clear();
+    kFiles.shrink_to_fit();
     emit finished();
 }

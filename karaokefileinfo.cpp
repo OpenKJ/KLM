@@ -1,10 +1,10 @@
 #include "karaokefileinfo.h"
 #include <QRegularExpression>
-#include <QDebug>
 #include <QTemporaryDir>
 #include "tagreader.h"
 #include "mzarchive.h"
 #include <QSqlQuery>
+#include <spdlog/spdlog.h>
 
 void KaraokeFileInfo::readTags() {
     if (m_tagsRead)
@@ -48,7 +48,7 @@ void KaraokeFileInfo::readTags() {
             m_tagSongid.append("-" + track);
         }
     } else {
-        qInfo() << "KaraokeFileInfo::readTags() called on non zip or cdg file (" << m_fileName << ").  Trying taglib.";
+         spdlog::info("KaraokeFileInfo::readTags() called on non zip or cdg file ({}).  Trying taglib.", m_fileName.toStdString());
         tagReader->setMedia(m_fileName);
         m_tagArtist = tagReader->getArtist();
         m_tagTitle = tagReader->getTitle();
@@ -207,7 +207,7 @@ uint64_t KaraokeFileInfo::getDuration() {
             m_duration = reader.getDuration();
         }
         catch (...) {
-            qInfo() << "KaraokeFileInfo unable to get duration for file: " << m_fileBaseName;
+            spdlog::warn("KaraokeFileInfo unable to get duration for file: {}", m_fileBaseName.toStdString());
         }
     }
     return m_duration;
@@ -293,7 +293,7 @@ void KaraokeFileInfo::getMetadata() {
             m_artist = parts.join(" - ");
             break;
         case METADATA:
-            qInfo() << "Using metadata";
+            spdlog::info("Using metadata");
             readTags();
             m_artist = m_tagArtist;
             m_title = m_tagTitle;
@@ -306,7 +306,7 @@ void KaraokeFileInfo::getMetadata() {
                 customPatternId = query.value(0).toInt();
             }
             if (customPatternId < 1) {
-                qCritical() << "Custom pattern set for m_path, but pattern ID is invalid!  Bailing out!";
+                spdlog::error("Custom pattern set for m_path, but pattern ID is invalid!  Bailing out!");
                 return;
             }
             query.exec("SELECT * FROM custompatterns WHERE patternid == " + QString::number(customPatternId));
@@ -348,7 +348,7 @@ uint32_t KaraokeFileInfo::getCRC32checksum() {
             m_duration = reader.getDuration();
         }
         catch (...) {
-            qInfo() << "KaraokeFileInfo unable to get duration for file: " << m_fileBaseName;
+            spdlog::warn("KaraokeFileInfo unable to get duration for file: {}", m_fileBaseName.toStdString());
         }
         m_crc32 = crcCalculator.calculateFromFile(m_fileName);
     }

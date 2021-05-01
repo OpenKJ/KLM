@@ -12,17 +12,14 @@ class DupeFinderCRC : public QObject
 public:
     explicit DupeFinderCRC(QObject *parent = nullptr);
     void findDupes();
-    QString path() const;
+    [[nodiscard]] QString path() const;
     void setPath(const QString &path);
 
 signals:
     void finished();
-    void findingFilesStarted();
-    void foundFiles(int);
-    void gettingChecksumsStarted(int);
-    void gettingChecksumsProgress(int);
-    void dupeFindStarted(int);
-    void dupeFindProgress(int);
+    void newStepStarted(const QString &step);
+    void stepMaxValChanged(int maxVal);
+    void progressValChanged(int curVal);
     void noDupesFound();
     void foundDuplicate(QString crc, QStringList files);
 };

@@ -58,7 +58,7 @@ jobs:
     - name: Setup vcpkg
       uses: lukka/run-vcpkg@v6
       with:
-        setupOnly: false 
+        setupOnly: true
         vcpkgDirectory: '${{ github.workspace }}/vcpkg'
         appendedCacheKey: ${{ hashFiles( '**/vcpkg_manifest/vcpkg.json' ) }}
         vcpkgTriplet: ${{ matrix.triplet }}

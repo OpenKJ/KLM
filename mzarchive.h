@@ -31,7 +31,7 @@ class MzArchive : public QObject
 {
     Q_OBJECT
 public:
-    explicit MzArchive(const QString &ArchiveFile, QObject *parent = 0);
+    explicit MzArchive(QString ArchiveFile, QObject *parent = 0);
     explicit MzArchive(QObject *parent = 0);
     unsigned int getSongDuration();
 
