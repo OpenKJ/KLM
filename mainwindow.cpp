@@ -11,6 +11,8 @@
 MainWindow::MainWindow(QWidget *parent)
         : QMainWindow(parent), ui(new Ui::MainWindow) {
     ui->setupUi(this);
+    ui->treeWidgetDuplicates->setColumnCount(2);
+    ui->treeWidgetDuplicates->hideColumn(1);
     workerThreadCrc = new QThread(nullptr);
     dfCrc = new DupeFinderCRC(nullptr);
     dfCrc->moveToThread(workerThreadCrc);
@@ -24,6 +26,7 @@ MainWindow::MainWindow(QWidget *parent)
         for (const auto &path : paths) {
             item->addChild(new QTreeWidgetItem(static_cast<QTreeWidget *>(nullptr), QStringList{path}));
         }
+        item->setData(1, Qt::DisplayRole, paths.size());
         ui->treeWidgetDuplicates->addTopLevelItem(item);
     }, Qt::QueuedConnection);
 }
@@ -70,9 +73,12 @@ void MainWindow::runCrcScan() {
     }, Qt::QueuedConnection);
     connect(dfCrc, &DupeFinderCRC::finished, this, [&]() {
         ui->treeWidgetDuplicates->expandAll();
-        if (ui->treeWidgetDuplicates->children().size() < 2)
-            QMessageBox::information(this, "No duplicates found",
-                                     "Scan did not find any files with identical CRC signatures.");
+        ui->treeWidgetDuplicates->sortByColumn(1, Qt::DescendingOrder);
+        for (int i = 0; i < ui->treeWidgetDuplicates->topLevelItemCount(); i++) {
+            ui->treeWidgetDuplicates->topLevelItem(i)->sortChildren(0, Qt::AscendingOrder);
+        }
+        if (prgDlg)
+            prgDlg->hide();
     }, Qt::QueuedConnection);
     connect(dfCrc, &DupeFinderCRC::noDupesFound, this, [&]() {
         QMessageBox::information(this, "No duplicates found",

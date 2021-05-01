@@ -25,12 +25,12 @@
 #include <QBuffer>
 #include <QTemporaryDir>
 #include <miniz/miniz_zip.h>
+
 #ifdef Q_OS_WIN
 #include <io.h>
 #endif
 
-MzArchive::MzArchive(const QString &ArchiveFile, QObject *parent) : QObject(parent)
-{
+MzArchive::MzArchive(const QString &ArchiveFile, QObject *parent) : QObject(parent) {
     archiveFile = ArchiveFile;
     oka.setArchiveFile(archiveFile);
     //qWarning() << "MzArchive opening file: " << archiveFile;
@@ -40,16 +40,14 @@ MzArchive::MzArchive(const QString &ArchiveFile, QObject *parent) : QObject(pare
     audioExtensions.append(".mov");
 }
 
-MzArchive::MzArchive(QObject *parent) : QObject(parent)
-{
+MzArchive::MzArchive(QObject *parent) : QObject(parent) {
     audioExtensions.append(".mp3");
     audioExtensions.append(".wav");
     audioExtensions.append(".ogg");
     audioExtensions.append(".mov");
 }
 
-unsigned int MzArchive::getSongDuration()
-{
+unsigned int MzArchive::getSongDuration() {
     if (!m_cdgFound)
         findCDG();
     if ((m_cdgFound) && (m_cdgSize > 0))
@@ -58,8 +56,7 @@ unsigned int MzArchive::getSongDuration()
         return 0;
 }
 
-void MzArchive::setArchiveFile(const QString &value)
-{
+void MzArchive::setArchiveFile(const QString &value) {
     //qWarning() << "MzArchive opening archive file: " << value;
     archiveFile = value;
     oka.setArchiveFile(value);
@@ -73,8 +70,7 @@ void MzArchive::setArchiveFile(const QString &value)
     m_cdgSupportedCompression = false;
 }
 
-bool MzArchive::checkCDG()
-{
+bool MzArchive::checkCDG() {
     if (!findCDG())
         return false;
     if (m_cdgSize <= 0)
@@ -82,8 +78,7 @@ bool MzArchive::checkCDG()
     return true;
 }
 
-bool MzArchive::checkAudio()
-{
+bool MzArchive::checkAudio() {
     if (!findAudio())
         return false;
     if (m_audioSize <= 0)
@@ -91,18 +86,15 @@ bool MzArchive::checkAudio()
     return true;
 }
 
-QString MzArchive::audioExtension()
-{
+QString MzArchive::audioExtension() {
     return audioExt;
 }
 
-bool MzArchive::extractAudio(const QString &destPath, const QString &destFile)
-{
-    if (findAudio())
-    {
-        if (!m_audioSupportedCompression || !m_cdgSupportedCompression)
-        {
-            qWarning() << archiveFile << " - Archive using non-standard compression method, falling back to infozip based zip handling";
+bool MzArchive::extractAudio(const QString &destPath, const QString &destFile) {
+    if (findAudio()) {
+        if (!m_audioSupportedCompression || !m_cdgSupportedCompression) {
+            qWarning() << archiveFile
+                       << " - Archive using non-standard compression method, falling back to infozip based zip handling";
             return oka.extractAudio(destPath, destFile);
         }
         mz_zip_archive archive;
@@ -113,13 +105,11 @@ bool MzArchive::extractAudio(const QString &destPath, const QString &destFile)
         QByteArray zipData = zipFile.readAll();
         zipFile.close();
         mz_zip_reader_init_mem(&archive, zipData.data(), zipData.size(), 0);
-        if (mz_zip_reader_extract_to_file(&archive, m_audioFileIndex, QString(destPath + QDir::separator() + destFile).toLocal8Bit(),0))
-        {
+        if (mz_zip_reader_extract_to_file(&archive, m_audioFileIndex,
+                                          QString(destPath + QDir::separator() + destFile).toLocal8Bit(), 0)) {
             mz_zip_reader_end(&archive);
             return true;
-        }
-        else
-        {
+        } else {
             qCritical() << "Failed to extract mp3 file";
             QString err(mz_zip_get_error_string(mz_zip_get_last_error(&archive)));
             qWarning() << "unzip error: " << err;
@@ -130,13 +120,11 @@ bool MzArchive::extractAudio(const QString &destPath, const QString &destFile)
     return false;
 }
 
-bool MzArchive::extractCdg(const QString &destPath, const QString &destFile)
-{
-    if (findCDG())
-    {
-        if (!m_audioSupportedCompression || !m_cdgSupportedCompression)
-        {
-            qWarning() << archiveFile << " - Archive using non-standard compression method, falling back to infozip based zip handling";
+bool MzArchive::extractCdg(const QString &destPath, const QString &destFile) {
+    if (findCDG()) {
+        if (!m_audioSupportedCompression || !m_cdgSupportedCompression) {
+            qWarning() << archiveFile
+                       << " - Archive using non-standard compression method, falling back to infozip based zip handling";
             return oka.extractCdg(destPath, destFile);
         }
         mz_zip_archive archive;
@@ -146,13 +134,11 @@ bool MzArchive::extractCdg(const QString &destPath, const QString &destFile)
         QByteArray zipData = zipFile.readAll();
         zipFile.close();
         mz_zip_reader_init_mem(&archive, zipData.data(), zipData.size(), 0);
-        if (mz_zip_reader_extract_to_file(&archive, m_cdgFileIndex, QString(destPath + QDir::separator() + destFile).toLocal8Bit(),0))
-        {
+        if (mz_zip_reader_extract_to_file(&archive, m_cdgFileIndex,
+                                          QString(destPath + QDir::separator() + destFile).toLocal8Bit(), 0)) {
             mz_zip_reader_end(&archive);
             return true;
-        }
-        else
-        {
+        } else {
             qCritical() << "Failed to extract cdg file";
             QString err(mz_zip_get_error_string(mz_zip_get_last_error(&archive)));
             qWarning() << "unzip error: " << err;
@@ -163,35 +149,29 @@ bool MzArchive::extractCdg(const QString &destPath, const QString &destFile)
     return false;
 }
 
-bool MzArchive::isValidKaraokeFile()
-{
-    if (!findEntries())
-    {
-        if (!m_audioSupportedCompression || !m_cdgSupportedCompression)
-        {
-            qWarning() << archiveFile << " - Archive using non-standard compression method, falling back to infozip based zip handling";
+bool MzArchive::isValidKaraokeFile() {
+    if (!findEntries()) {
+        if (!m_audioSupportedCompression || !m_cdgSupportedCompression) {
+            qWarning() << archiveFile
+                       << " - Archive using non-standard compression method, falling back to infozip based zip handling";
             return oka.isValidKaraokeFile();
         }
-        if (!m_cdgFound)
-        {
+        if (!m_cdgFound) {
             qWarning() << archiveFile << " - Missing CDG file";
             lastError = "CDG not found in zip file";
         }
-        if (!m_audioFound)
-        {
+        if (!m_audioFound) {
             qWarning() << archiveFile << " - Missing audio file";
             lastError = "Audio file not found in zip file";
         }
         return false;
     }
-    if (m_audioSize <= 0)
-    {
+    if (m_audioSize <= 0) {
         qWarning() << archiveFile << " - Zero byte audio file";
         lastError = "Zero byte audio file";
         return false;
     }
-    if (m_cdgSize <= 0)
-    {
+    if (m_cdgSize <= 0) {
         qWarning() << archiveFile << " - Zero byte CDG file";
         lastError = "Zero byte CDG file";
         return false;
@@ -199,25 +179,21 @@ bool MzArchive::isValidKaraokeFile()
     return true;
 }
 
-QString MzArchive::getLastError()
-{
+QString MzArchive::getLastError() {
     return lastError;
 }
 
-bool MzArchive::findCDG()
-{
+bool MzArchive::findCDG() {
     findEntries();
     return m_cdgFound;
 }
 
-bool MzArchive::findAudio()
-{
+bool MzArchive::findAudio() {
     findEntries();
     return m_audioFound;
 }
 
-bool MzArchive::findEntries()
-{
+bool MzArchive::findEntries() {
     if (m_audioFound && m_cdgFound && m_audioSupportedCompression && m_cdgSupportedCompression)
         return true;
     mz_zip_archive archive;
@@ -225,39 +201,30 @@ bool MzArchive::findEntries()
     mz_zip_archive_file_stat fStat;
 
     QFile zipFile(archiveFile);
-    if (!zipFile.open(QIODevice::ReadOnly))
-    {
+    if (!zipFile.open(QIODevice::ReadOnly)) {
         qWarning() << "Error opening zip file";
         return false;
     }
     QByteArray zipData = zipFile.readAll();
     zipFile.close();
-    if (!mz_zip_reader_init_mem(&archive, zipData.data(), zipData.size(), 0))
-    {
+    if (!mz_zip_reader_init_mem(&archive, zipData.data(), zipData.size(), 0)) {
         qWarning() << "Error opening zip file";
         return false;
     }
     unsigned int files = mz_zip_reader_get_num_files(&archive);
-    for (unsigned int i=0; i < files; i++)
-    {
-        if (mz_zip_reader_file_stat(&archive, i, &fStat))
-        {
+    for (unsigned int i = 0; i < files; i++) {
+        if (mz_zip_reader_file_stat(&archive, i, &fStat)) {
             QString fileName = fStat.m_filename;
-            if (fileName.endsWith(".cdg",Qt::CaseInsensitive))
-            {
+            if (fileName.endsWith(".cdg", Qt::CaseInsensitive)) {
                 cdgFileName = fileName;
                 m_cdgFileIndex = fStat.m_file_index;
                 m_cdgSize = fStat.m_uncomp_size;
                 m_cdgCRC32 = fStat.m_crc32;
                 m_cdgSupportedCompression = fStat.m_is_supported;
                 m_cdgFound = true;
-            }
-            else
-            {
-                for (int e=0; e < audioExtensions.size(); e++)
-                {
-                    if (fileName.endsWith(audioExtensions.at(e), Qt::CaseInsensitive))
-                    {
+            } else {
+                for (int e = 0; e < audioExtensions.size(); e++) {
+                    if (fileName.endsWith(audioExtensions.at(e), Qt::CaseInsensitive)) {
                         audioFileName = fileName;
                         m_audioFileIndex = fStat.m_file_index;
                         audioExt = audioExtensions.at(e);
@@ -267,12 +234,10 @@ bool MzArchive::findEntries()
                     }
                 }
             }
-            if (m_audioFound && m_cdgFound && m_cdgSupportedCompression && m_audioSupportedCompression)
-            {
+            if (m_audioFound && m_cdgFound && m_cdgSupportedCompression && m_audioSupportedCompression) {
                 mz_zip_reader_end(&archive);
                 return true;
-            }
-            else if (m_audioFound && m_cdgFound && (!m_cdgSupportedCompression || !m_audioSupportedCompression))
+            } else if (m_audioFound && m_cdgFound && (!m_cdgSupportedCompression || !m_audioSupportedCompression))
                 return oka.isValidKaraokeFile();
         }
     }

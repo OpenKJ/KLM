@@ -338,7 +338,7 @@ uint32_t KaraokeFileInfo::getCRC32checksum() {
         archive.setArchiveFile(m_fileName);
         m_duration = archive.getSongDuration();
         m_crc32 = archive.cdgCRC32();
-    } else if(m_fileName.endsWith(".cdg", Qt::CaseInsensitive)) {
+    } else if (m_fileName.endsWith(".cdg", Qt::CaseInsensitive)) {
         m_crc32 = crcCalculator.calculateFromFile(m_fileName);
         m_duration = ((QFile(m_fileName).size() / 96) / 75) * 1000;
     } else {
@@ -355,13 +355,11 @@ uint32_t KaraokeFileInfo::getCRC32checksum() {
     return m_crc32;
 }
 
-Crc32::Crc32()
-{
+Crc32::Crc32() {
     quint32 crc;
 
     // initialize CRC table
-    for (int i = 0; i < 256; i++)
-    {
+    for (int i = 0; i < 256; i++) {
         crc = i;
         for (int j = 0; j < 8; j++)
             crc = crc & 1 ? (crc >> 1) ^ 0xEDB88320UL : crc >> 1;
@@ -370,8 +368,7 @@ Crc32::Crc32()
     }
 }
 
-quint32 Crc32::calculateFromFile(const QString &filename)
-{
+quint32 Crc32::calculateFromFile(const QString &filename) {
     quint32 crc;
     QFile file;
 
@@ -382,10 +379,8 @@ quint32 Crc32::calculateFromFile(const QString &filename)
     crc = 0xFFFFFFFFUL;
 
     file.setFileName(filename);
-    if (file.open(QIODevice::ReadOnly))
-    {
-        while (!file.atEnd())
-        {
+    if (file.open(QIODevice::ReadOnly)) {
+        while (!file.atEnd()) {
             len = file.read(buffer, 16000);
             for (i = 0; i < len; i++)
                 crc = crc_table[(crc ^ buffer[i]) & 0xFF] ^ (crc >> 8);
@@ -397,16 +392,13 @@ quint32 Crc32::calculateFromFile(const QString &filename)
     return crc ^ 0xFFFFFFFFUL;
 }
 
-void Crc32::initInstance(int i)
-{
+void Crc32::initInstance(int i) {
     instances[i] = 0xFFFFFFFFUL;
 }
 
-void Crc32::pushData(int i, const char *data, int len)
-{
+void Crc32::pushData(int i, const char *data, int len) {
     quint32 crc = instances[i];
-    if (crc)
-    {
+    if (crc) {
         for (int j = 0; j < len; j++)
             crc = crc_table[(crc ^ data[j]) & 0xFF] ^ (crc >> 8);
 
@@ -414,14 +406,12 @@ void Crc32::pushData(int i, const char *data, int len)
     }
 }
 
-quint32 Crc32::releaseInstance(int i)
-{
+quint32 Crc32::releaseInstance(int i) {
     quint32 crc32 = instances[i];
     if (crc32) {
         instances.remove(i);
         return crc32 ^ 0xFFFFFFFFUL;
-    }
-    else {
+    } else {
         return 0;
     }
 }
