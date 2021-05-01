@@ -23,6 +23,7 @@ signals:
     void gettingChecksumsProgress(int);
     void dupeFindStarted(int);
     void dupeFindProgress(int);
+    void noDupesFound();
     void foundDuplicate(QString crc, QStringList files);
 };
 

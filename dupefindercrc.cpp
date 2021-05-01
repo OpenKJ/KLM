@@ -53,6 +53,7 @@ void DupeFinderCRC::findDupes()
     qWarning() << "Checksums calculated, finding possible duplicates";
     emit dupeFindStarted(crcChecksums.size());
     int processedChecksums{0};
+    uint dupesFound{0};
     for (const auto crc : crcChecksums)
     {
         std::vector<KaraokeFile*> newvec;
@@ -75,9 +76,12 @@ void DupeFinderCRC::findDupes()
             }
             QString hexvalue = QString("%1").arg(crc, 0, 16, QLatin1Char( '0' ));
             emit foundDuplicate(hexvalue, paths);
+            dupesFound++;
         }
         emit dupeFindProgress(++processedChecksums);
     }
+    if (dupesFound == 0)
+        emit noDupesFound();
     qWarning() << "Done";
     for (auto kfile : kfiles)
         delete kfile;

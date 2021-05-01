@@ -26,9 +26,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(PkgConfig)
 
-find_package(fmt REQUIRED)
 find_package(miniz CONFIG REQUIRED)
-find_package(ZLIB REQUIRED)
+find_package(spdlog CONFIG REQUIRED)
 
 pkg_check_modules(TAGLIB REQUIRED IMPORTED_TARGET taglib)
 
@@ -55,4 +54,4 @@ add_executable(klm
 )
 
 
-target_link_libraries(klm PRIVATE Qt${QT_VERSION_MAJOR}::Widgets Qt${QT_VERSION_MAJOR}::Sql fmt::fmt miniz::miniz PkgConfig::TAGLIB ZLIB::ZLIB)
+target_link_libraries(klm PRIVATE Qt${QT_VERSION_MAJOR}::Widgets Qt${QT_VERSION_MAJOR}::Sql miniz::miniz PkgConfig::TAGLIB spdlog::spdlog spdlog::spdlog_header_only)

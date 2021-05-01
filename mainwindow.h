@@ -16,8 +16,8 @@ class MainWindow : public QMainWindow
     Q_OBJECT
 
 public:
-    MainWindow(QWidget *parent = nullptr);
-    ~MainWindow();
+    explicit MainWindow(QWidget *parent = nullptr);
+    ~MainWindow() override;
 
 private slots:
     void on_treeWidgetDuplicates_customContextMenuRequested(const QPoint &pos);
@@ -29,6 +29,6 @@ private:
     void runCrcScan();
     QThread *workerThreadCrc;
     DupeFinderCRC *dfCrc;
-    QProgressDialog *prgDlg;
+    QProgressDialog *prgDlg{nullptr};
 };
 #endif // MAINWINDOW_H
