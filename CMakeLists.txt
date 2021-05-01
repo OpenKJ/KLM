@@ -28,6 +28,7 @@ find_package(PkgConfig)
 
 find_package(fmt REQUIRED)
 find_package(miniz CONFIG REQUIRED)
+find_package(ZLIB REQUIRED)
 
 pkg_check_modules(TAGLIB REQUIRED IMPORTED_TARGET taglib)
 
@@ -54,4 +55,4 @@ add_executable(klm
 )
 
 
-target_link_libraries(klm PRIVATE Qt${QT_VERSION_MAJOR}::Widgets Qt${QT_VERSION_MAJOR}::Sql fmt::fmt miniz::miniz PkgConfig::TAGLIB)
+target_link_libraries(klm PRIVATE Qt${QT_VERSION_MAJOR}::Widgets Qt${QT_VERSION_MAJOR}::Sql fmt::fmt miniz::miniz PkgConfig::TAGLIB ZLIB::ZLIB)
