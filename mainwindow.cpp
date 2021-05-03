@@ -17,7 +17,9 @@ MainWindow::MainWindow(QWidget *parent)
     ui->treeWidgetDuplicates->setColumnCount(3);
     ui->treeWidgetDuplicates->hideColumn(1);
     ui->treeWidgetDuplicates->setHeaderHidden(false);
-    ui->treeWidgetDuplicates->setColumnWidth(2, QFontMetrics(QApplication::font()).size(Qt::TextSingleLine, "_Audio Bitrate_").width() + 10);
+    ui->treeWidgetDuplicates->setColumnWidth(2, QFontMetrics(QApplication::font()).size(Qt::TextSingleLine,
+                                                                                        "_Audio Bitrate_").width() +
+                                                10);
     ui->treeWidgetDuplicates->setColumnWidth(0, 200);
     ui->treeWidgetDuplicates->setHeaderLabels({"File", "Count", "Audio Bitrate"});
     workerThreadCrc = new QThread(nullptr);
@@ -33,23 +35,36 @@ MainWindow::MainWindow(QWidget *parent)
         m_path = ui->lineEditPath->text();
     });
 
-    connect(dfCrc, &DupeFinderCRC::foundDuplicate, this, [&](const QString &crc, const QStringList &paths) {
+    connect(dfCrc, &DupeFinderCRC::foundDuplicates, this, [&](const QVector<QSharedPointer<KaraokeFile>>& kFiles) {
         auto *item = new QTreeWidgetItem(static_cast<QTreeWidget *>(nullptr), QStringList{
-                "Matches: " + QString::number(paths.size()) + " - Checksum: " + crc});
-        for (const auto &path : paths) {
-            auto child = new QTreeWidgetItem(static_cast<QTreeWidget *>(nullptr), QStringList{path});
-            KaraokeFile kFile;
-            kFile.setPath(path);
-            child->setData(2, Qt::DisplayRole, QString::number(kFile.getBitrate()) + "kbps");
+                "Matches: " + QString::number(kFiles.size()) + " - Checksum: " +  QString("%1").arg(kFiles.at(0)->crc(), 0, 16, QLatin1Char('0'))});
+        for (const auto& kFile : kFiles) {
+            auto child = new QTreeWidgetItem(static_cast<QTreeWidget *>(nullptr));
+            child->setData(0, Qt::DisplayRole, kFile->path());
+            child->setData(2, Qt::DisplayRole, QString::number(kFile->getBitrate()) + "kbps");
             item->addChild(child);
         }
-        item->setData(1, Qt::DisplayRole, paths.size());
+        item->setData(1, Qt::DisplayRole, (uint)kFiles.size());
         ui->treeWidgetDuplicates->addTopLevelItem(item);
     }, Qt::QueuedConnection);
+
+    connect(dfCrc, &DupeFinderCRC::foundBadFiles, this, [&](const QVector<QSharedPointer<KaraokeFile>>& kFiles) {
+        auto *item = new QTreeWidgetItem(static_cast<QTreeWidget *>(nullptr), QStringList{
+                "Bad or corrupted files: " + QString::number(kFiles.size())});
+        for (const auto& kFile : kFiles) {
+            auto child = new QTreeWidgetItem(static_cast<QTreeWidget *>(nullptr));
+            child->setData(0, Qt::DisplayRole, kFile->path());
+            item->addChild(child);
+        }
+        item->setData(1, Qt::DisplayRole, 99999);
+        ui->treeWidgetDuplicates->addTopLevelItem(item);
+    }, Qt::QueuedConnection);
+
     connect(dfCrc, &DupeFinderCRC::noDupesFound, this, [&]() {
         QMessageBox::information(this, "No duplicates found",
                                  "Scan did not find any files with identical CRC signatures.");
     }, Qt::QueuedConnection);
+
     connect(dfCrc, &DupeFinderCRC::finished, this, [&]() {
         ui->treeWidgetDuplicates->expandAll();
         ui->treeWidgetDuplicates->sortByColumn(1, Qt::DescendingOrder);

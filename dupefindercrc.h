@@ -4,6 +4,7 @@
 #include <QObject>
 #include <vector>
 #include "karaokefile.h"
+#include <memory>
 
 class DupeFinderCRC : public QObject
 {
@@ -21,7 +22,8 @@ signals:
     void stepMaxValChanged(int maxVal);
     void progressValChanged(int curVal);
     void noDupesFound();
-    void foundDuplicate(QString crc, QStringList files);
+    void foundDuplicates(QVector<QSharedPointer<KaraokeFile>> kFiles);
+    void foundBadFiles(QVector<QSharedPointer<KaraokeFile>> kFiles);
 };
 
 #endif // DUPEFINDERCRC_H

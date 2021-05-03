@@ -5,6 +5,7 @@
 #include <mutex>
 #include "karaokefile.h"
 #include <spdlog/spdlog.h>
+#include <QSharedPointer>
 
 QString DupeFinderCRC::path() const {
     return m_path;
@@ -15,7 +16,6 @@ void DupeFinderCRC::setPath(const QString &path) {
 }
 
 DupeFinderCRC::DupeFinderCRC(QObject *parent) : QObject(parent) {
-
 }
 
 void DupeFinderCRC::findDupes() {
@@ -33,15 +33,13 @@ void DupeFinderCRC::findDupes() {
     spdlog::info("Got all files, calculating crc32 checksums");
     emit newStepStarted("Calculating crc32 checksums");
     emit stepMaxValChanged(files.size());
-    std::vector<KaraokeFile *> kFiles;
+    QVector<QSharedPointer<KaraokeFile>> kFiles;
     kFiles.reserve(files.size());
     int processedFiles{0};
     for (const auto &file : files) {
-        auto *kFile = new KaraokeFile;
-        kFile->setPath(file);
-        auto checksum = kFile->crc();
+        auto kFile = QSharedPointer<KaraokeFile>(new KaraokeFile(file));
         emit progressValChanged(++processedFiles);
-        crcChecksums.insert(checksum);
+        crcChecksums.insert(kFile->crc());
         kFiles.push_back(kFile);
     }
     spdlog::info("Checksums calculated, finding duplicates");
@@ -49,9 +47,24 @@ void DupeFinderCRC::findDupes() {
     emit stepMaxValChanged((int) crcChecksums.size());
     int processedChecksums{0};
     uint dupesFound{0};
+    spdlog::info("Checking for bad files...");
+    QVector<QSharedPointer<KaraokeFile>> badFiles;
+    std::copy_if(kFiles.begin(), kFiles.end(), std::back_inserter(badFiles), [](auto file) {
+        return (file->crc() == 0);
+    });
+    kFiles.erase(std::remove_if(kFiles.begin(), kFiles.end(), [] (auto file) {
+        return (file->crc() == 0);
+    }), kFiles.end());
+    if (!badFiles.empty()) {
+        spdlog::warn("Found {} bad zip files", badFiles.size());
+        emit foundBadFiles(badFiles);
+    }
+    else
+        spdlog::info("No bad files detected");
     for (const auto crc : crcChecksums) {
-        std::vector<KaraokeFile *> newVec;
+        QVector<QSharedPointer<KaraokeFile>> newVec;
         if (crc == 0) {
+
             emit progressValChanged(++processedChecksums);
             continue;
         }
@@ -62,11 +75,9 @@ void DupeFinderCRC::findDupes() {
             return (file->crc() == crc);
         }), kFiles.end());
         if (newVec.size() > 1) {
-            QStringList paths;
-            for (const auto &file : newVec) {
-                paths.push_back(file->path());
-            }
-            emit foundDuplicate(QString("%1").arg(crc, 0, 16, QLatin1Char('0')), paths);
+            for (const auto& kFile : newVec)
+                kFile->getBitrate();
+            emit foundDuplicates(newVec);
             dupesFound++;
         }
         emit progressValChanged(++processedChecksums);
@@ -74,8 +85,6 @@ void DupeFinderCRC::findDupes() {
     if (dupesFound == 0)
             emit noDupesFound();
     spdlog::info("Processing complete");
-    for (auto kFile : kFiles)
-        delete kFile;
     kFiles.clear();
     kFiles.shrink_to_fit();
     emit finished();

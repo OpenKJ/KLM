@@ -7,59 +7,73 @@
 #include <taglib/taglib/mpeg/mpegproperties.h>
 #include <taglib/taglib/mpeg/id3v2/id3v2framefactory.h>
 #include <taglib/taglib/toolkit/tbytevectorstream.h>
+#include <QDir>
+#include <QFile>
+#include <QFileInfo>
+#include <utility>
 
-struct membuf : std::streambuf {
-    membuf(char const *base, size_t size) {
-        char *p(const_cast<char *>(base));
-        this->setg(p, p, p + size);
-    }
-};
-
-struct imemstream : virtual membuf, std::istream {
-    imemstream(char const *base, size_t size) :
-            membuf(base, size),
-            std::istream(static_cast<std::streambuf *>(this)) {
-    }
-};
 
 void KaraokeFile::setPath(const QString &path) {
     m_path = path;
+    applyNamingPattern();
 }
 
 uint32_t KaraokeFile::crc() {
     if (!m_fileScanned)
-        scanFile();
+        scanZipFile();
     return m_crc32;
 }
 
 uint64_t KaraokeFile::duration() {
     if (!m_fileScanned)
-        scanFile();
+        scanZipFile();
     return m_duration;
 }
 
-void KaraokeFile::scanFile() {
+void KaraokeFile::scanZipFile() {
     QuaZip qz(m_path);
     if (!qz.open(QuaZip::mdUnzip)) {
         m_crc32 = 0;
         m_duration = 0;
         m_fileScanned = true;
+        m_errorCode = ErrorCode::BadZip;
         spdlog::warn("Error occurred while opening zip file: {}", m_path.toStdString());
         return;
     };
     auto files = qz.getFileInfoList();
-    for (const auto &file : files)
+    bool cdgFound{false};
+    bool audioFound{false};
+    for (const auto &file : files) {
         if (file.name.endsWith("cdg", Qt::CaseInsensitive)) {
             m_crc32 = file.crc;
             m_duration = ((file.uncompressedSize / 96) / 75) * 1000;
+            cdgFound = true;
+            if (file.uncompressedSize == 0)
+                m_errorCode = ErrorCode::ZeroByteCdg;
+            continue;
         };
+        for (const auto &ext : supportedAFileExtensions) {
+            if (file.name.endsWith(ext, Qt::CaseInsensitive)) {
+                audioFound = true;
+                if (file.uncompressedSize == 0)
+                    m_errorCode = ErrorCode::ZeroByteAudio;
+            }
+        }
+    }
+    if (m_crc32 == 0 || m_duration == 0)
+        m_errorCode = ErrorCode::MissingCdg;
     m_fileScanned = true;
+    if (m_errorCode != ErrorCode::OK)
+        spdlog::warn("Error {} while processing zip file: {}", getErrCodeStr(), m_path.toStdString());
 }
 
 uint KaraokeFile::getBitrate() {
+    if (m_audioBitrate > 0)
+        return m_audioBitrate;
     QuaZip qz(m_path);
     if (!qz.open(QuaZip::mdUnzip)) {
         spdlog::warn("Error occurred while opening zip file: {}", m_path.toStdString());
+        m_errorCode = ErrorCode::BadZip;
         return 0;
     };
     auto files = qz.getFileInfoList();
@@ -72,8 +86,77 @@ uint KaraokeFile::getBitrate() {
             TagLib::ByteVector bvec(data.constData(), data.size());
             TagLib::ByteVectorStream tios(bvec);
             TagLib::MPEG::File tref = TagLib::MPEG::File(&tios, TagLib::ID3v2::FrameFactory::FrameFactory::instance());
-            spdlog::info("Bitrate: {} Filename: {}", tref.audioProperties()->bitrate(), file.name.toStdString());
-            return tref.audioProperties()->bitrate();
+            spdlog::debug("Bitrate: {} Filename: {}", tref.audioProperties()->bitrate(), file.name.toStdString());
+            m_audioBitrate = tref.audioProperties()->bitrate();
         };
-    return 0;
+    return m_audioBitrate;
 }
+
+QString KaraokeFile::artist() const {
+
+    return m_artist;
+}
+
+void KaraokeFile::applyNamingPattern() {
+    auto parts = QFileInfo(m_path).completeBaseName().split(m_namingPattern.sep);
+    if (m_namingPattern.songIdPos != -1 && m_namingPattern.songIdPos < parts.size()) {
+        m_songid = parts.at(m_namingPattern.songIdPos);
+        m_songid.replace('_', ' ');
+    }
+    else
+        m_songid = "";
+    if (m_namingPattern.artistPos != -1 && m_namingPattern.artistPos < parts.size()) {
+        m_artist = parts.at(m_namingPattern.artistPos);
+        m_artist.replace('_', ' ');
+    }
+    else
+        m_artist = "";
+    if (m_namingPattern.titlePos != -1 && m_namingPattern.titlePos < parts.size()) {
+        m_title = parts.at(m_namingPattern.titlePos);
+        m_title.replace('_', ' ');
+    }
+    else
+        m_title = "";
+}
+
+void KaraokeFile::setNamingPattern(const NamingPattern &pattern) {
+    m_namingPattern = pattern;
+    applyNamingPattern();
+}
+
+
+KaraokeFile::KaraokeFile(QString path, QObject *parent) : m_path(std::move(path)), QObject(parent) {
+    applyNamingPattern();
+}
+
+QString KaraokeFile::findAudioFileForCdg() {
+    QFileInfo fi(m_path);
+    for (const auto &ext : supportedAFileExtensions) {
+        QString afn = fi.absolutePath() + QDir::separator() + fi.completeBaseName() + ext;
+        if (QFile::exists(afn))
+            return afn;
+    }
+    m_errorCode = ErrorCode::MissingAudio;
+    return QString();
+}
+
+std::string KaraokeFile::getErrCodeStr() const {
+    switch (m_errorCode) {
+        case ErrorCode::OK:
+            return "ErrorCode::OK";
+        case ErrorCode::BadZip:
+            return "ErrorCode::BadZip";
+        case ErrorCode::MissingCdg:
+            return "ErrorCode::MissingCdg";
+        case ErrorCode::MissingAudio:
+            return "ErrorCode::MissingAudio";
+        case ErrorCode::ZeroByteCdg:
+            return "ErrorCode::ZeroByteCdg";
+        case ErrorCode::ZeroByteAudio:
+            return "ErrorCode::ZeroByteAudio";
+        case ErrorCode::ZeroByte:
+            return "ErrorCode::ZeroByte";
+    }
+    return std::string();
+}
+
