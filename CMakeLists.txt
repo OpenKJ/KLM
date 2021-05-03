@@ -6,6 +6,7 @@ option(BUILD_SHARED_LIBS "" NO)
 add_subdirectory(quazip)
 
 option(WITH_ZLIB "Build with ZLIB" OFF)
+option(ENABLE_STATIC_RUNTIME "" ON)
 add_subdirectory(taglib)
 
 add_subdirectory(spdlog)
@@ -18,10 +19,6 @@ set(CMAKE_AUTORCC ON)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
-find_package(PkgConfig)
-
-find_package(spdlog CONFIG REQUIRED)
 
 
 find_package(QT NAMES Qt6 Qt5 COMPONENTS Widgets REQUIRED)
