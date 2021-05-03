@@ -1,3 +1,9 @@
-[submodule "vcpkg"]
-	path = vcpkg
-	url = https://github.com/microsoft/vcpkg
+[submodule "quazip"]
+	path = quazip
+	url = https://github.com/stachenov/quazip
+[submodule "taglib"]
+	path = taglib
+	url = https://github.com/taglib/taglib.git
+[submodule "spdlog"]
+	path = spdlog
+	url = https://github.com/gabime/spdlog.git

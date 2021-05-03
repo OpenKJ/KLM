@@ -8,13 +8,18 @@
 #include <QMessageBox>
 #include <QProgressDialog>
 #include <spdlog/spdlog.h>
-
+#include <karaokefile.h>
+#include <QFontMetrics>
 
 MainWindow::MainWindow(QWidget *parent)
         : QMainWindow(parent), ui(new Ui::MainWindow) {
     ui->setupUi(this);
-    ui->treeWidgetDuplicates->setColumnCount(2);
+    ui->treeWidgetDuplicates->setColumnCount(3);
     ui->treeWidgetDuplicates->hideColumn(1);
+    ui->treeWidgetDuplicates->setHeaderHidden(false);
+    ui->treeWidgetDuplicates->setColumnWidth(2, QFontMetrics(QApplication::font()).size(Qt::TextSingleLine, "_Audio Bitrate_").width() + 10);
+    ui->treeWidgetDuplicates->setColumnWidth(0, 200);
+    ui->treeWidgetDuplicates->setHeaderLabels({"File", "Count", "Audio Bitrate"});
     workerThreadCrc = new QThread(nullptr);
     dfCrc = new DupeFinderCRC(nullptr);
     dfCrc->moveToThread(workerThreadCrc);
@@ -32,7 +37,11 @@ MainWindow::MainWindow(QWidget *parent)
         auto *item = new QTreeWidgetItem(static_cast<QTreeWidget *>(nullptr), QStringList{
                 "Matches: " + QString::number(paths.size()) + " - Checksum: " + crc});
         for (const auto &path : paths) {
-            item->addChild(new QTreeWidgetItem(static_cast<QTreeWidget *>(nullptr), QStringList{path}));
+            auto child = new QTreeWidgetItem(static_cast<QTreeWidget *>(nullptr), QStringList{path});
+            KaraokeFile kFile;
+            kFile.setPath(path);
+            child->setData(2, Qt::DisplayRole, QString::number(kFile.getBitrate()) + "kbps");
+            item->addChild(child);
         }
         item->setData(1, Qt::DisplayRole, paths.size());
         ui->treeWidgetDuplicates->addTopLevelItem(item);
@@ -47,6 +56,7 @@ MainWindow::MainWindow(QWidget *parent)
         for (int i = 0; i < ui->treeWidgetDuplicates->topLevelItemCount(); i++) {
             ui->treeWidgetDuplicates->topLevelItem(i)->sortChildren(0, Qt::AscendingOrder);
         }
+        ui->treeWidgetDuplicates->resizeColumnToContents(0);
     }, Qt::QueuedConnection);
 }
 
