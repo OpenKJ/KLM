@@ -25,6 +25,8 @@ private:
 
     void browseForPath();
     void runCrcScan();
+    bool moveFile(const QString &filename, const QString &destPath);
+    bool removeFile(const QString &filename);
 
 private slots:
     void duplicatesContextMenuRequested(const QPoint &pos);

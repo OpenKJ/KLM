@@ -35,23 +35,24 @@ MainWindow::MainWindow(QWidget *parent)
         m_path = ui->lineEditPath->text();
     });
 
-    connect(dfCrc, &DupeFinderCRC::foundDuplicates, this, [&](const QVector<QSharedPointer<KaraokeFile>>& kFiles) {
+    connect(dfCrc, &DupeFinderCRC::foundDuplicates, this, [&](const QVector<QSharedPointer<KaraokeFile>> &kFiles) {
         auto *item = new QTreeWidgetItem(static_cast<QTreeWidget *>(nullptr), QStringList{
-                "Matches: " + QString::number(kFiles.size()) + " - Checksum: " +  QString("%1").arg(kFiles.at(0)->crc(), 0, 16, QLatin1Char('0'))});
-        for (const auto& kFile : kFiles) {
+                "Matches: " + QString::number(kFiles.size()) + " - Checksum: " +
+                QString("%1").arg(kFiles.at(0)->crc(), 0, 16, QLatin1Char('0'))});
+        for (const auto &kFile : kFiles) {
             auto child = new QTreeWidgetItem(static_cast<QTreeWidget *>(nullptr));
             child->setData(0, Qt::DisplayRole, kFile->path());
             child->setData(2, Qt::DisplayRole, QString::number(kFile->getBitrate()) + "kbps");
             item->addChild(child);
         }
-        item->setData(1, Qt::DisplayRole, (uint)kFiles.size());
+        item->setData(1, Qt::DisplayRole, (uint) kFiles.size());
         ui->treeWidgetDuplicates->addTopLevelItem(item);
     }, Qt::QueuedConnection);
 
-    connect(dfCrc, &DupeFinderCRC::foundBadFiles, this, [&](const QVector<QSharedPointer<KaraokeFile>>& kFiles) {
+    connect(dfCrc, &DupeFinderCRC::foundBadFiles, this, [&](const QVector<QSharedPointer<KaraokeFile>> &kFiles) {
         auto *item = new QTreeWidgetItem(static_cast<QTreeWidget *>(nullptr), QStringList{
                 "Bad or corrupted files: " + QString::number(kFiles.size())});
-        for (const auto& kFile : kFiles) {
+        for (const auto &kFile : kFiles) {
             auto child = new QTreeWidgetItem(static_cast<QTreeWidget *>(nullptr));
             child->setData(0, Qt::DisplayRole, kFile->path());
             item->addChild(child);
@@ -132,11 +133,8 @@ void MainWindow::duplicatesContextMenuRequested(const QPoint &pos) {
         auto file = curItem->text(0);
         QMenu contextMenu(this);
         contextMenu.addAction("Delete this file", [&]() {
-            if (QFile::remove(file))
+            if (removeFile(file))
                 curItem->parent()->removeChild(curItem);
-            else
-                QMessageBox::warning(this, "Error deleting file",
-                                     "An error occurred while deleting the file, please ensure the file isn't read-only and that you have the requisite permissions.");
         });
         contextMenu.addAction("Keep this file and delete others", [&]() {
             auto siblingCount = curItem->parent()->childCount();
@@ -145,13 +143,8 @@ void MainWindow::duplicatesContextMenuRequested(const QPoint &pos) {
                 auto item = curItem->parent()->child(i);
                 if (item == curItem)
                     continue;
-                if (!QFile::remove(item->text(0))) {
-                    QMessageBox::warning(this, "Error deleting file",
-                                         "An error occurred while deleting the file, please ensure the file isn't read-only and that you have the requisite permissions.\n\nFile: " +
-                                         item->text(0));
-                    continue;
-                }
-                curItem->parent()->removeChild(item);
+                if (removeFile(item->text(0)))
+                    curItem->parent()->removeChild(item);
 
             }
         });
@@ -166,14 +159,8 @@ void MainWindow::duplicatesContextMenuRequested(const QPoint &pos) {
                 auto item = curItem->parent()->child(i);
                 if (item == curItem)
                     continue;
-                if (!QFile::rename(item->text(0), dest + QDir::separator() + QFileInfo(item->text(0)).fileName())) {
-                    QMessageBox::warning(this, "Error deleting file",
-                                         "An error occurred while moving file, please ensure the file isn't read-only and that you have the requisite permissions.\n\nFile: " +
-                                         item->text(0));
-                    continue;
-                }
-                curItem->parent()->removeChild(item);
-
+                if (moveFile(item->text(0), dest))
+                    curItem->parent()->removeChild(item);
             }
         });
         contextMenu.exec(QCursor::pos());
@@ -187,13 +174,8 @@ void MainWindow::duplicatesContextMenuRequested(const QPoint &pos) {
     }
     contextMenu.addAction("Delete files", [&]() {
         for (const auto &item : filteredItems) {
-            if (!QFile::remove(item->text(0))) {
-                QMessageBox::warning(this, "Error deleting file",
-                                     "An error occurred while deleting the file, please ensure the file isn't read-only and that you have the requisite permissions.\n\nFile: " +
-                                     item->text(0));
-                continue;
-            }
-            item->parent()->removeChild(item);
+            if (removeFile(item->text(0)))
+                item->parent()->removeChild(item);
         }
     });
     contextMenu.addAction("Move files", [&]() {
@@ -202,14 +184,55 @@ void MainWindow::duplicatesContextMenuRequested(const QPoint &pos) {
         if (dest.isEmpty())
             return;
         for (const auto &item : filteredItems) {
-            if (!QFile::rename(item->text(0), dest + QDir::separator() + QFileInfo(item->text(0)).fileName())) {
-                QMessageBox::warning(this, "Error moving file",
-                                     "An error occurred while moving the file, please ensure the file isn't read-only and that you have the requisite permissions.\n\nFile: " +
-                                     item->text(0));
-                continue;
-            }
-            item->parent()->removeChild(item);
+            if (moveFile(item->text(0), dest))
+                item->parent()->removeChild(item);
         }
     });
     contextMenu.exec(QCursor::pos());
+}
+
+bool MainWindow::removeFile(const QString &filename) {
+    if (!QFile::remove(filename)) {
+        QMessageBox::warning(this, "Error deleting file",
+                             "An error occurred while deleting the file, please ensure the file isn't read-only and that you have the requisite permissions.\n\nFile: " +
+                             filename);
+        return false;
+    }
+    if (filename.endsWith("cdg", Qt::CaseInsensitive)) {
+        auto audioFile = KaraokeFile::findAudioFileForCdg(filename);
+        if (audioFile.isEmpty())
+        {
+            QMessageBox::warning(this, "Possible problem with deletion",
+                                 "The CDG file was successfully deleted, but KLM was unable to find a matching audio file.  "
+                                 "  You will need to manually remove the audio file if one exists.");
+        }
+        if (!QFile::remove(audioFile)) {
+            QMessageBox::warning(this, "Error deleting file!",
+                                 "The CDG file was successfully deleted, but an error occurred while deleting its matching audio file!"
+                                 "  You will need to manually remove the audio file.\n\nFile: " +
+                                 audioFile);
+        }
+    }
+    return true;
+}
+
+bool MainWindow::moveFile(const QString &filename, const QString &destPath) {
+    if (!QFile::rename(filename, destPath + QDir::separator() + QFileInfo(filename).fileName())) {
+        QMessageBox::warning(this, "Error moving file",
+                             "An error occurred while moving the file, please ensure the file isn't read-only and that you have the requisite permissions.\n\nFile: " +
+                             filename);
+        spdlog::warn("Unable to move file: {} to destpath: {}", filename.toStdString(), destPath.toStdString());
+        return false;
+    }
+    if (filename.endsWith("cdg", Qt::CaseInsensitive)) {
+        auto audioFile = KaraokeFile::findAudioFileForCdg(filename);
+        if (!QFile::rename(audioFile, destPath + QDir::separator() + QFileInfo(audioFile).fileName())) {
+            QMessageBox::warning(this, "Error moving file",
+                                 "An error occurred while moving the file.  The cdg file was successfully moved, but an error occurred while moving the matching audio "
+                                 "file.  NOTE: You will need to move the audio file manually.\n\nFile: " +
+                                 filename);
+            spdlog::warn("Unable to move file: {} to destpath: {}", audioFile.toStdString(), destPath.toStdString());
+        }
+    }
+    return true;
 }

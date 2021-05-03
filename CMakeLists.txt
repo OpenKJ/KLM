@@ -276,6 +276,8 @@ add_executable(klm
         karaokefile.h
         dupefindercrc.cpp
         dupefindercrc.h
+        qcrc32.cpp
+        qcrc32.h
         ${TAGLIB_SOURCES}
         )
 

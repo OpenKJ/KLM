@@ -40,6 +40,11 @@ struct NamingPattern {
 class KaraokeFile : public QObject {
     Q_OBJECT
 private:
+    enum class ProcessingMode {
+        AudioGZip,
+        AudioG,
+        VideoFile
+    };
     QString m_artist;
     QString m_title;
     QString m_songid;
@@ -49,9 +54,14 @@ private:
     uint m_audioBitrate{0};
     bool m_fileScanned{false};
     NamingPattern m_namingPattern;
-    QStringList supportedKFileExtensions{"cdg", "zip", "mp4", "mkv", "avi", "ogv"};
-    QStringList supportedAFileExtensions{".mp3", ".ogg", ".wav"};
-    QString findAudioFileForCdg();
+    static QStringList supportedAFileExtensions() { return {".mp3", ".ogg", ".wav"}; }
+    void scanFile();
+    void scanZipFile();
+    void scanCdgFile();
+    ProcessingMode m_procMode{ProcessingMode::AudioGZip};
+    static uint64_t getDurationFromCdgSize(uint64_t size) {
+        return ((size / 96) / 75) * 1000;
+    }
 
     void applyNamingPattern();
 
@@ -65,19 +75,20 @@ public:
         ZeroByteAudio,
         ZeroByte
     };
-    std::string getErrCodeStr() const;
+    static QStringList supportedKFileExtensions() { return {"cdg", "zip", "mp4", "mkv", "avi", "ogv"}; }
+    [[nodiscard]] std::string getErrCodeStr() const;
     [[nodiscard]] ErrorCode getErrorCode() const {return m_errorCode;}
     explicit KaraokeFile(QString path, QObject *parent = nullptr);
     [[nodiscard]] QString artist() const;
     [[nodiscard]] QString title() const { return m_title; }
     [[nodiscard]] QString songid() const { return m_songid; }
-    QString path() const { return m_path; }
-    void setPath(const QString &path);
+    [[nodiscard]] QString path() const { return m_path; }
     uint32_t crc();
     uint64_t duration();
-    void scanZipFile();
     uint getBitrate();
     ErrorCode m_errorCode{ErrorCode::OK};
+    QString findAudioFileForCdg();
+    [[nodiscard]] static QString findAudioFileForCdg(const QString& cdgFilePath);
 
     void setNamingPattern(const NamingPattern &pattern);
 };

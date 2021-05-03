@@ -26,7 +26,9 @@ void DupeFinderCRC::findDupes() {
     QDirIterator it(m_path, QDirIterator::Subdirectories);
     while (it.hasNext()) {
         it.next();
-        if (it.fileInfo().completeSuffix().toLower() == "zip") {
+        auto ext = it.fileInfo().completeSuffix().toLower();
+        for (const auto &sExt : KaraokeFile::supportedKFileExtensions())
+        if (ext == sExt) {
             files.push_back(it.filePath());
         }
     }
@@ -49,11 +51,11 @@ void DupeFinderCRC::findDupes() {
     uint dupesFound{0};
     spdlog::info("Checking for bad files...");
     QVector<QSharedPointer<KaraokeFile>> badFiles;
-    std::copy_if(kFiles.begin(), kFiles.end(), std::back_inserter(badFiles), [](auto file) {
-        return (file->crc() == 0);
+    std::copy_if(kFiles.begin(), kFiles.end(), std::back_inserter(badFiles), [] (auto file) {
+        return (file->getErrorCode() != KaraokeFile::ErrorCode::OK);
     });
     kFiles.erase(std::remove_if(kFiles.begin(), kFiles.end(), [] (auto file) {
-        return (file->crc() == 0);
+        return (file->getErrorCode() != KaraokeFile::ErrorCode::OK);
     }), kFiles.end());
     if (!badFiles.empty()) {
         spdlog::warn("Found {} bad zip files", badFiles.size());
