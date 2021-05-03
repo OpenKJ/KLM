@@ -20,7 +20,7 @@ jobs:
         uses: pat-s/always-upload-cache@v2.1.3
         with:
           path: "D:/a/KLM/Qt"
-          key: ${{ runner.os }}-QtCache-5.15.2-1
+          key: ${{ runner.os }}-Qt64Cache-5.15.2-1
 
       - name: Install Qt
         uses: jurplel/install-qt-action@v2
