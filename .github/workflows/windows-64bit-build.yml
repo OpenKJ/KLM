@@ -1,25 +1,15 @@
-# This is a basic workflow to help you get started with Actions
-
 name: Windows 64bit Build
 
-# Controls when the action will run. Triggers the workflow on push or pull request
-# events but only for the master branch
 on:
   push:
     branches: [ main ]
 
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  # This workflow contains a single job called "build"
   build64:
     name: Windows 64bit Build
-    # The type of runner that the job will run on
-    # runs-on: [ self-hosted, Windows, azure ]
     runs-on: windows-2019
 
-    # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
         with:
           submodules: recursive
@@ -56,7 +46,6 @@ jobs:
       - name: Build
         working-directory: ${{github.workspace}}/build
         shell: bash
-        # Execute the build.  You can specify a specific target with "--target <NAME>"
         run: cmake --build .
 
       - name: Create output dir and copy exe
@@ -74,7 +63,7 @@ jobs:
         run: |
           7z a klm-windows-64bit.zip output
 
-      - name: Archive code coverage results
+      - name: Archive build
         uses: actions/upload-artifact@v2
         with:
           name: Win64 test build
