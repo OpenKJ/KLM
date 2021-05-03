@@ -49,23 +49,14 @@ jobs:
         shell: bash
         run: cmake --build .
 
-      - name: Create output dir and copy exe
+      - name: Create output dir and copy exe and deps
         run: |
           mkdir output
           copy build\klm.exe output\
-
-      - name: Run windeployqt
-        run: |
           windeployqt --release --compiler-runtime output/klm.exe
-          dir output
-        shell: cmd
-
-      - name: Create zipfile
-        run: |
-          7z a klm-windows-32bit.zip output
 
       - name: Archive build
         uses: actions/upload-artifact@v2
         with:
-          name: Win64 test build
-          path: klm-windows-32bit.zip
+          name: Win32 test build
+          path: output
