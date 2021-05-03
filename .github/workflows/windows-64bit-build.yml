@@ -19,7 +19,7 @@ jobs:
         id: cache-qt
         uses: pat-s/always-upload-cache@v2.1.3
         with:
-          path: ../Qt
+          path: "D:/a/KLM/Qt"
           key: ${{ runner.os }}-QtCache-5.15.2-1
 
       - name: Install Qt
