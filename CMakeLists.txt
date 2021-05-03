@@ -265,7 +265,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(QT NAMES Qt6 Qt5 COMPONENTS Widgets REQUIRED)
-find_package(Qt${QT_VERSION_MAJOR} COMPONENTS Widgets Sql REQUIRED)
+find_package(Qt${QT_VERSION_MAJOR} COMPONENTS Widgets REQUIRED)
 
 add_executable(klm
         main.cpp
@@ -279,4 +279,4 @@ add_executable(klm
         ${TAGLIB_SOURCES}
         )
 
-target_link_libraries(klm PRIVATE Qt${QT_VERSION_MAJOR}::Widgets Qt${QT_VERSION_MAJOR}::Sql spdlog::spdlog_header_only QuaZip::QuaZip)
+target_link_libraries(klm PRIVATE Qt${QT_VERSION_MAJOR}::Widgets spdlog::spdlog_header_only QuaZip::QuaZip)

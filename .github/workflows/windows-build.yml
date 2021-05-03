@@ -19,79 +19,63 @@ jobs:
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
-    # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-    - uses: actions/checkout@v2
-      with:
-        submodules: recursive
-    - uses: seanmiddleditch/gha-setup-ninja@master
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v2
+        with:
+          submodules: recursive
+      - uses: seanmiddleditch/gha-setup-ninja@master
 
-    - name: Download InfoZip Binary
-      uses: carlosperate/download-file-action@v1.0.3
-      id: download-infozip
-      with:
-        file-url: 'https://storage.googleapis.com/okj-installer-deps/unzip.exe'
-        file-name: unzip.exe
-        location: /downloads
+      - name: Cache Qt
+        id: cache-qt
+        uses: pat-s/always-upload-cache@v2.1.3
+        with:
+          path: ../Qt
+          key: ${{ runner.os }}-QtCache-5.15.2-1
 
-    - name: Cache Qt
-      id: cache-qt
-      uses: pat-s/always-upload-cache@v2.1.3
-      with:
-       path: ../Qt
-       key: ${{ runner.os }}-QtCache-5.15.2
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v2
+        with:
+          cached: ${{ steps.cache-qt.outputs.cache-hit }}
+          version: '5.15.2'
+          modules: 'core'
 
-    - name: Install Qt
-      uses: jurplel/install-qt-action@v2
-      with:
-       cached: ${{ steps.cache-qt.outputs.cache-hit }}
-       version: '5.15.2'
-       modules: 'core gui sql network widgets concurrent svg printsupport'
+      - name: Create Build Environment
+        run: cmake -E make_directory ${{github.workspace}}/build
 
-    - name: Create Build Environment
-      run: cmake -E make_directory ${{github.workspace}}/build
+      - name: Set up Visual Studio shell
+        uses: egor-tensin/vs-shell@v2
+        with:
+          arch: x64
 
-    - name: Set up Visual Studio shell
-      uses: egor-tensin/vs-shell@v2
-      with:
-        arch: x64
+      - name: Configure CMake
+        shell: cmd
+        working-directory: ${{github.workspace}}/build
+        run: |
+          cmake .. -DCMAKE_BUILD_TYPE=Release -G Ninja
 
-    - name: Configure CMake
-      shell: cmd
-      working-directory: ${{github.workspace}}/build
-      run: |
-        cmake .. -DCMAKE_BUILD_TYPE=Release -G Ninja
+      - name: Build
+        working-directory: ${{github.workspace}}/build
+        shell: bash
+        # Execute the build.  You can specify a specific target with "--target <NAME>"
+        run: cmake --build .
 
-    - name: Build
-      working-directory: ${{github.workspace}}/build
-      shell: bash
-      # Execute the build.  You can specify a specific target with "--target <NAME>"
-      run: cmake --build .
+      - name: Create output dir and copy exe
+        run: |
+          mkdir output
+          copy build\klm.exe output\
 
-    - name: Create output dir and copy exe
-      run: |
-        mkdir output
-        copy build\klm.exe output\
+      - name: Run windeployqt
+        run: |
+          windeployqt --release --compiler-runtime output/klm.exe
+          dir output
+        shell: cmd
 
-    - name: Run windeployqt
-      run: |
-        windeployqt --release --compiler-runtime output/openkj.exe
-        dir output
-      shell: cmd
-      
-    - name: Copy in other dependencies
-      run: |
-        copy ${{ steps.download-infozip.outputs.file-path }} output\
-        7z a klm.zip output
+      - name: Create zipfile
+        run: |
+          7z a klm-windows-64bit.zip output
 
-    - name: Installing gcloud console tools
-      uses: google-github-actions/setup-gcloud@master
-      with:
-        version: 'latest'
-        service_account_key: ${{ secrets.GCLOUD_KEY }}
-        export_default_credentials: true
-
-    - name: Upload to google cloud storage
-      run: |
-        $env:python_version=$(python -c 'import sys; print(\".\".join(map(str, sys.version_info[:3])))')         
-        $env:CLOUDSDK_PYTHON="C:\hostedtoolcache\windows\Python\$env:python_version\x64\python"
-        gsutil cp klm.zip gs://openkj-installers/
+      - name: Archive code coverage results
+        uses: actions/upload-artifact@v2
+        with:
+          name: Win64 test build
+          path: klm-windows-64bit.zip
