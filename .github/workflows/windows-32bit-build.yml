@@ -6,7 +6,7 @@ on:
 
 jobs:
   build64:
-    name: Windows 64bit Build
+    name: Windows 32bit Build
     runs-on: windows-2019
 
     steps:
