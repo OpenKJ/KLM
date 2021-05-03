@@ -1,12 +1,12 @@
 #include "karaokefile.h"
-#include <quazip5/quazip.h>
-#include <quazip5/quazipfile.h>
+#include <quazip/quazip.h>
+#include <quazip/quazipfile.h>
 #include <spdlog/spdlog.h>
-#include <taglib/tag.h>
-#include <taglib/mpegfile.h>
-#include <taglib/mpegproperties.h>
-#include <taglib/id3v2framefactory.h>
-#include <taglib/tbytevectorstream.h>
+#include <taglib/taglib/tag.h>
+#include <taglib/taglib/mpeg/mpegfile.h>
+#include <taglib/taglib/mpeg/mpegproperties.h>
+#include <taglib/taglib/mpeg/id3v2/id3v2framefactory.h>
+#include <taglib/taglib/toolkit/tbytevectorstream.h>
 
 struct membuf : std::streambuf {
     membuf(char const *base, size_t size) {

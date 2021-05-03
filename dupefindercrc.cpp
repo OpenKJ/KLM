@@ -5,7 +5,6 @@
 #include <mutex>
 #include "karaokefile.h"
 #include <spdlog/spdlog.h>
-#include <quazip/quazip/quazip.h>
 
 QString DupeFinderCRC::path() const {
     return m_path;
