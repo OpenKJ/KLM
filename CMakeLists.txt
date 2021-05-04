@@ -269,10 +269,6 @@ find_package(Qt${QT_VERSION_MAJOR} COMPONENTS Widgets REQUIRED)
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
     set(WINDOWS_ICON_RC "appicon.rc")
-    set_property(
-            TARGET klm
-            PROPERTY WIN32_EXECUTABLE true
-    )
 endif()
 
 add_executable(klm
@@ -294,3 +290,10 @@ add_executable(klm
         )
 
 target_link_libraries(klm PRIVATE Qt${QT_VERSION_MAJOR}::Widgets spdlog::spdlog_header_only QuaZip::QuaZip)
+
+if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+    set_property(
+            TARGET klm
+            PROPERTY WIN32_EXECUTABLE true
+    )
+endif()
