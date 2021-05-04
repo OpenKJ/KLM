@@ -98,7 +98,7 @@ uint KaraokeFile::getBitrate() {
             spdlog::warn("Error {} while processing cdg file: {}", getErrCodeStr(), m_path.toStdString());
             return 0;
         }
-        TagLib::MPEG::File tMpgFile = TagLib::MPEG::File(audioFile.toLocal8Bit());
+        TagLib::MPEG::File tMpgFile = TagLib::MPEG::File(audioFile.toStdString().c_str());
         spdlog::debug("Bitrate: {} Filename: {}", tMpgFile.audioProperties()->bitrate(), audioFile.toStdString());
         m_audioBitrate = tMpgFile.audioProperties()->bitrate();
     }
