@@ -13,6 +13,10 @@
   <property name="windowTitle">
    <string>Karaoke DeDup</string>
   </property>
+  <property name="windowIcon">
+   <iconset resource="images.qrc">
+    <normaloff>:/icons/okjtool.svg</normaloff>:/icons/okjtool.svg</iconset>
+  </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QVBoxLayout" name="verticalLayout_4">
     <item>
@@ -87,7 +91,7 @@
             <x>0</x>
             <y>0</y>
             <width>904</width>
-            <height>311</height>
+            <height>318</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_3">
@@ -127,12 +131,14 @@
      <x>0</x>
      <y>0</y>
      <width>948</width>
-     <height>29</height>
+     <height>24</height>
     </rect>
    </property>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
  </widget>
- <resources/>
+ <resources>
+  <include location="images.qrc"/>
+ </resources>
  <connections/>
 </ui>

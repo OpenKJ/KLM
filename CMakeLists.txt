@@ -267,6 +267,14 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_package(QT NAMES Qt6 Qt5 COMPONENTS Widgets REQUIRED)
 find_package(Qt${QT_VERSION_MAJOR} COMPONENTS Widgets REQUIRED)
 
+if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+    set(WINDOWS_ICON_RC "appicon.rc")
+    set_property(
+            TARGET klm
+            PROPERTY WIN32_EXECUTABLE true
+    )
+endif()
+
 add_executable(klm
         main.cpp
         mainwindow.cpp
@@ -280,7 +288,9 @@ add_executable(klm
         dupefinderat.h
         qcrc32.cpp
         qcrc32.h
+        images.qrc
         ${TAGLIB_SOURCES}
+        ${WINDOWS_RC_ICON}
         )
 
 target_link_libraries(klm PRIVATE Qt${QT_VERSION_MAJOR}::Widgets spdlog::spdlog_header_only QuaZip::QuaZip)
