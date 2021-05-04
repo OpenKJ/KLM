@@ -14,7 +14,6 @@ class DupeFinderCRC : public QObject
 public:
     explicit DupeFinderCRC(QObject *parent = nullptr);
     void findDupes();
-    [[nodiscard]] QString path() const;
     void setPath(const QString &path);
 
 signals:

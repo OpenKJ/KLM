@@ -49,6 +49,7 @@ private:
     };
     QString m_artist;
     QString m_title;
+    QString m_atCombo;
     QString m_songid;
     QString m_path;
     uint64_t m_duration{0};
@@ -84,6 +85,7 @@ public:
     explicit KaraokeFile(QString path, QObject *parent = nullptr);
     [[nodiscard]] QString artist() const;
     [[nodiscard]] QString title() const { return m_title; }
+    [[nodiscard]] QString atCombo() const { return m_atCombo; }
     [[nodiscard]] QString songid() const { return m_songid; }
     [[nodiscard]] QString path() const { return m_path; }
     uint32_t crc();

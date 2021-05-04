@@ -132,6 +132,22 @@ void KaraokeFile::applyNamingPattern() {
         m_title.replace('_', ' ');
     } else
         m_title = "";
+    if (m_artist.contains(','))
+    {
+        auto artistTmp = m_artist;
+        auto spaceParts = m_artist.split(' ', Qt::SkipEmptyParts);
+        if (spaceParts.size() < 4)
+        {
+            auto commaParts = m_artist.split(", ");
+            if (commaParts.size() == 2) {
+                m_artist = commaParts.at(1).trimmed() + ' ' + commaParts.at(0).trimmed();
+                m_artist.remove(',');
+
+                spdlog::info("Replaced comma artist with non-comma:\n{}\n{}",artistTmp.toStdString(), m_artist.toStdString());
+            }
+        }
+    }
+    m_atCombo = m_artist.toLower() + " - " + m_title.toLower();
 }
 
 void KaraokeFile::setNamingPattern(const NamingPattern &pattern) {
@@ -141,6 +157,12 @@ void KaraokeFile::setNamingPattern(const NamingPattern &pattern) {
 
 
 KaraokeFile::KaraokeFile(QString path, QObject *parent) : QObject(parent), m_path(std::move(path)) {
+    if (m_path.endsWith("zip", Qt::CaseInsensitive))
+        m_procMode = ProcessingMode::AudioGZip;
+    else if (m_path.endsWith("cdg", Qt::CaseInsensitive))
+        m_procMode = ProcessingMode::AudioG;
+    else
+        m_procMode = ProcessingMode::VideoFile;
     applyNamingPattern();
 }
 

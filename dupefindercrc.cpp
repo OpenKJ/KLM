@@ -5,11 +5,7 @@
 #include <mutex>
 #include "karaokefile.h"
 #include <spdlog/spdlog.h>
-#include <QSharedPointer>
 
-QString DupeFinderCRC::path() const {
-    return m_path;
-}
 
 void DupeFinderCRC::setPath(const QString &path) {
     m_path = path;
