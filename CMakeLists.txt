@@ -268,9 +268,8 @@ find_package(QT NAMES Qt6 Qt5 COMPONENTS Widgets REQUIRED)
 find_package(Qt${QT_VERSION_MAJOR} COMPONENTS Widgets REQUIRED)
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
-    set(WINDOWS_ICON_RC
+    set(WINDOWS_RC_ICON
             icons/appicon.rc
-            icons/appiconresource.h
             )
 endif()
 
