@@ -21,28 +21,16 @@ DupeFinderCRC::DupeFinderCRC(QObject *parent) : QObject(parent) {
 void DupeFinderCRC::findDupes() {
     std::set<uint32_t> crcChecksums;
     emit newStepStarted("Finding karaoke files...");
+    emit stepMaxValChanged(0);
     spdlog::info("Getting files in path: {}", m_path.toStdString());
-    QStringList files;
-    QDirIterator it(m_path, QDirIterator::Subdirectories);
-    while (it.hasNext()) {
-        it.next();
-        auto ext = it.fileInfo().completeSuffix().toLower();
-        for (const auto &sExt : KaraokeFile::supportedKFileExtensions())
-        if (ext == sExt) {
-            files.push_back(it.filePath());
-        }
-    }
-    spdlog::info("Got all files, calculating crc32 checksums");
+    auto kFiles = KLM::getKaraokeFiles(m_path);
+    spdlog::info("Found {} karaoke files, calculating crc32 checksums", kFiles.size());
     emit newStepStarted("Calculating crc32 checksums");
-    emit stepMaxValChanged(files.size());
-    QVector<QSharedPointer<KaraokeFile>> kFiles;
-    kFiles.reserve(files.size());
+    emit stepMaxValChanged(kFiles.size());
     int processedFiles{0};
-    for (const auto &file : files) {
-        auto kFile = QSharedPointer<KaraokeFile>(new KaraokeFile(file));
+    for (const auto &kFile : kFiles) {
         emit progressValChanged(++processedFiles);
         crcChecksums.insert(kFile->crc());
-        kFiles.push_back(kFile);
     }
     spdlog::info("Checksums calculated, finding duplicates");
     emit newStepStarted("Scanning for duplicate checksums...");
@@ -50,7 +38,7 @@ void DupeFinderCRC::findDupes() {
     int processedChecksums{0};
     uint dupesFound{0};
     spdlog::info("Checking for bad files...");
-    QVector<QSharedPointer<KaraokeFile>> badFiles;
+    KLM::KaraokeFileList badFiles;
     std::copy_if(kFiles.begin(), kFiles.end(), std::back_inserter(badFiles), [] (auto file) {
         return (file->getErrorCode() != KaraokeFile::ErrorCode::OK);
     });
@@ -64,7 +52,7 @@ void DupeFinderCRC::findDupes() {
     else
         spdlog::info("No bad files detected");
     for (const auto crc : crcChecksums) {
-        QVector<QSharedPointer<KaraokeFile>> newVec;
+        KLM::KaraokeFileList newVec;
         if (crc == 0) {
 
             emit progressValChanged(++processedChecksums);

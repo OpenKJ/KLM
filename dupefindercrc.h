@@ -10,6 +10,7 @@ class DupeFinderCRC : public QObject
 {
     Q_OBJECT
     QString m_path;
+    
 public:
     explicit DupeFinderCRC(QObject *parent = nullptr);
     void findDupes();

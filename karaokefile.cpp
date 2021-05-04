@@ -3,6 +3,7 @@
 #include <quazip/quazipfile.h>
 #include <spdlog/spdlog.h>
 #include <taglib/taglib/tag.h>
+#include <taglib/taglib/fileref.h>
 #include <taglib/taglib/mpeg/mpegfile.h>
 #include <taglib/taglib/mpeg/id3v2/id3v2framefactory.h>
 #include <taglib/taglib/toolkit/tbytevectorstream.h>
@@ -48,7 +49,7 @@ void KaraokeFile::scanZipFile() {
             continue;
         };
         for (const auto &ext : supportedAFileExtensions()) {
-            if (file.name.endsWith(ext, Qt::CaseInsensitive)) {
+            if (file.name.endsWith(ext.c_str(), Qt::CaseInsensitive)) {
                 audioFound = true;
                 if (file.uncompressedSize == 0)
                     m_errorCode = ErrorCode::ZeroByteAudio;
@@ -98,9 +99,13 @@ uint KaraokeFile::getBitrate() {
             spdlog::warn("Error {} while processing cdg file: {}", getErrCodeStr(), m_path.toStdString());
             return 0;
         }
-        TagLib::MPEG::File tMpgFile = TagLib::MPEG::File(audioFile.toStdString().c_str());
+        auto tMpgFile = TagLib::MPEG::File(audioFile.toStdString().c_str());
         spdlog::debug("Bitrate: {} Filename: {}", tMpgFile.audioProperties()->bitrate(), audioFile.toStdString());
         m_audioBitrate = tMpgFile.audioProperties()->bitrate();
+    }
+    else
+    {
+        scanVideoFile();
     }
     return m_audioBitrate;
 }
@@ -135,9 +140,8 @@ void KaraokeFile::setNamingPattern(const NamingPattern &pattern) {
 }
 
 
-KaraokeFile::KaraokeFile(QString path, QObject *parent) : m_path(std::move(path)), QObject(parent) {
+KaraokeFile::KaraokeFile(QString path, QObject *parent) : QObject(parent), m_path(std::move(path)) {
     applyNamingPattern();
-    scanFile();
 }
 
 void KaraokeFile::scanCdgFile() {
@@ -148,6 +152,24 @@ void KaraokeFile::scanCdgFile() {
     findAudioFileForCdg();
     if (m_errorCode != ErrorCode::OK)
         spdlog::warn("Error {} while processing cdg file: {}", getErrCodeStr(), m_path.toStdString());
+    m_fileScanned = true;
+}
+
+void KaraokeFile::scanVideoFile()
+{
+    QFileInfo fi(m_path);
+    if (fi.size() == 0)
+    {
+        m_errorCode = ErrorCode::ZeroByte;
+        m_fileScanned = true;
+        return;
+    }
+    Crc32 crc;
+    m_crc32 = crc.calculateFromFile(m_path);
+    auto tFileRef = TagLib::FileRef(m_path.toStdString().c_str());
+    spdlog::debug("Bitrate: {} Filename: {}", tFileRef.audioProperties()->bitrate(), m_path.toStdString());
+    m_audioBitrate = tFileRef.audioProperties()->bitrate();
+    m_duration = tFileRef.audioProperties()->lengthInMilliseconds();
     m_fileScanned = true;
 }
 
@@ -194,13 +216,16 @@ void KaraokeFile::scanFile() {
         scanCdgFile();
     }
     else
+    {
         m_procMode = ProcessingMode::VideoFile;
+        scanVideoFile();
+    }
 }
 
 QString KaraokeFile::findAudioFileForCdg(const QString& cdgFilePath) {
     QFileInfo fi(cdgFilePath);
     for (const auto &ext : supportedAFileExtensions()) {
-        QString afn = fi.absolutePath() + QDir::separator() + fi.completeBaseName() + ext;
+        QString afn = fi.absolutePath() + QDir::separator() + fi.completeBaseName() + ext.c_str();
         if (QFile::exists(afn)) {
             return afn;
         }

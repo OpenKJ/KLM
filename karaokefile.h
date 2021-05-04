@@ -4,6 +4,8 @@
 #include <QString>
 #include <vector>
 #include <QObject>
+#include <QDirIterator>
+#include <QSharedPointer>
 
 struct NamingPattern {
     QString name{"SongID - Artist - Title"};
@@ -54,10 +56,11 @@ private:
     uint m_audioBitrate{0};
     bool m_fileScanned{false};
     NamingPattern m_namingPattern;
-    static QStringList supportedAFileExtensions() { return {".mp3", ".ogg", ".wav"}; }
+    static std::vector<std::string> supportedAFileExtensions() { return {".mp3", ".ogg", ".wav"}; }
     void scanFile();
     void scanZipFile();
     void scanCdgFile();
+    void scanVideoFile();
     ProcessingMode m_procMode{ProcessingMode::AudioGZip};
     static uint64_t getDurationFromCdgSize(uint64_t size) {
         return ((size / 96) / 75) * 1000;
@@ -75,7 +78,7 @@ public:
         ZeroByteAudio,
         ZeroByte
     };
-    static QStringList supportedKFileExtensions() { return {"cdg", "zip", "mp4", "mkv", "avi", "ogv"}; }
+    static std::vector<std::string> supportedKFileExtensions() { return {"cdg", "zip", "mp4", "mkv", "avi", "ogv"}; }
     [[nodiscard]] std::string getErrCodeStr() const;
     [[nodiscard]] ErrorCode getErrorCode() const {return m_errorCode;}
     explicit KaraokeFile(QString path, QObject *parent = nullptr);
@@ -92,5 +95,22 @@ public:
 
     void setNamingPattern(const NamingPattern &pattern);
 };
+
+namespace KLM {
+typedef QVector<QSharedPointer<KaraokeFile>> KaraokeFileList;
+static KaraokeFileList getKaraokeFiles(const QString &path) {
+    KaraokeFileList kFiles;
+    QDirIterator it(path, QDirIterator::Subdirectories);
+    while (it.hasNext()) {
+        it.next();
+        auto ext = it.fileInfo().completeSuffix().toLower();
+        for (const auto &sExt : KaraokeFile::supportedKFileExtensions())
+            if (ext == sExt.c_str()) {
+                kFiles.push_back(QSharedPointer<KaraokeFile>(new KaraokeFile(it.filePath())));
+            }
+    }
+    return kFiles;
+}
+}
 
 #endif // KARAOKEFILE_H
