@@ -1,18 +1,18 @@
-#ifndef DUPEFINDERCRC_H
-#define DUPEFINDERCRC_H
+#ifndef DUPEFINDERAT_H
+#define DUPEFINDERAT_H
 
 #include <QObject>
 #include <vector>
 #include "karaokefile.h"
 #include <memory>
 
-class DupeFinderCRC : public QObject
+class DupeFinderAT : public QObject
 {
     Q_OBJECT
     QString m_path;
     
 public:
-    explicit DupeFinderCRC(QObject *parent = nullptr);
+    explicit DupeFinderAT(QObject *parent = nullptr);
     void findDupes();
     void setPath(const QString &path);
 
@@ -26,4 +26,4 @@ signals:
     void foundBadFiles(QVector<QSharedPointer<KaraokeFile>> kFiles);
 };
 
-#endif // DUPEFINDERCRC_H
+#endif // DUPEFINDERAT_H

@@ -23,57 +23,92 @@ MainWindow::MainWindow(QWidget *parent)
     ui->treeWidgetDuplicates->setColumnWidth(0, 200);
     ui->treeWidgetDuplicates->setHeaderLabels({"File", "Count", "Audio Bitrate"});
     workerThreadCrc = new QThread(nullptr);
+    workerThreadAT = new QThread(nullptr);
+    workerThreadCrc->setObjectName("DupeFinderCRC");
+    workerThreadAT->setObjectName("DupeFinderAT");
     dfCrc = new DupeFinderCRC(nullptr);
+    dfAT = new DupeFinderAT(nullptr);
     dfCrc->moveToThread(workerThreadCrc);
-    connect(workerThreadCrc, &QThread::started, dfCrc, &DupeFinderCRC::findDupes);
-    connect(dfCrc, &DupeFinderCRC::finished, workerThreadCrc, &QThread::quit);
+    dfAT->moveToThread(workerThreadAT);
+    
+    // UI connections
     connect(ui->pushButtonBrowse, &QPushButton::clicked, [&]() { browseForPath(); });
     connect(ui->pushButtonCrc, &QPushButton::clicked, [&]() { runCrcScan(); });
+    connect(ui->pushButtonAT, &QPushButton::clicked, [&]() { runATScan(); });
     connect(ui->treeWidgetDuplicates, &QTreeWidget::customContextMenuRequested, this,
             &MainWindow::duplicatesContextMenuRequested);
     connect(ui->lineEditPath, &QLineEdit::textChanged, [&](const QString &text) {
         m_path = ui->lineEditPath->text();
     });
 
-    connect(dfCrc, &DupeFinderCRC::foundDuplicates, this, [&](const QVector<QSharedPointer<KaraokeFile>> &kFiles) {
-        auto *item = new QTreeWidgetItem(static_cast<QTreeWidget *>(nullptr), QStringList{
-                "Matches: " + QString::number(kFiles.size()) + " - Checksum: " +
-                QString("%1").arg(kFiles.at(0)->crc(), 0, 16, QLatin1Char('0'))});
-        for (const auto &kFile : kFiles) {
-            auto child = new QTreeWidgetItem(static_cast<QTreeWidget *>(nullptr));
-            child->setData(0, Qt::DisplayRole, kFile->path());
-            child->setData(2, Qt::DisplayRole, QString::number(kFile->getBitrate()) + "kbps");
-            item->addChild(child);
-        }
-        item->setData(1, Qt::DisplayRole, (uint) kFiles.size());
-        ui->treeWidgetDuplicates->addTopLevelItem(item);
-    }, Qt::QueuedConnection);
+    // CRC scan connections
+    connect(workerThreadCrc, &QThread::started, dfCrc, &DupeFinderCRC::findDupes);
+    connect(dfCrc, &DupeFinderCRC::finished, workerThreadCrc, &QThread::quit);    
+    connect(dfCrc, &DupeFinderCRC::foundDuplicates, this, &MainWindow::dfFoundCRCDuplicates, Qt::QueuedConnection);
+    connect(dfCrc, &DupeFinderCRC::foundBadFiles, this, &MainWindow::dfFoundBadFiles, Qt::QueuedConnection);
+    connect(dfCrc, &DupeFinderCRC::noDupesFound, this, &MainWindow::dfNoDupesFound, Qt::QueuedConnection);
+    connect(dfCrc, &DupeFinderCRC::finished, this, &MainWindow::dfFinished, Qt::QueuedConnection);
 
-    connect(dfCrc, &DupeFinderCRC::foundBadFiles, this, [&](const QVector<QSharedPointer<KaraokeFile>> &kFiles) {
-        auto *item = new QTreeWidgetItem(static_cast<QTreeWidget *>(nullptr), QStringList{
-                "Bad or corrupted files: " + QString::number(kFiles.size())});
-        for (const auto &kFile : kFiles) {
-            auto child = new QTreeWidgetItem(static_cast<QTreeWidget *>(nullptr));
-            child->setData(0, Qt::DisplayRole, kFile->path());
-            item->addChild(child);
-        }
-        item->setData(1, Qt::DisplayRole, 99999);
-        ui->treeWidgetDuplicates->addTopLevelItem(item);
-    }, Qt::QueuedConnection);
+    // AT scan connections
+    connect(workerThreadAT, &QThread::started, dfAT, &DupeFinderAT::findDupes);
+    connect(dfAT, &DupeFinderAT::finished, workerThreadAT, &QThread::quit);
+    connect(dfAT, &DupeFinderAT::foundDuplicates, this, &MainWindow::dfFoundATDuplicates, Qt::QueuedConnection);
+    connect(dfAT, &DupeFinderAT::foundBadFiles, this, &MainWindow::dfFoundBadFiles, Qt::QueuedConnection);
+    connect(dfAT, &DupeFinderAT::noDupesFound, this, &MainWindow::dfNoDupesFound, Qt::QueuedConnection);
+    connect(dfAT, &DupeFinderAT::finished, this, &MainWindow::dfFinished, Qt::QueuedConnection);
+}
 
-    connect(dfCrc, &DupeFinderCRC::noDupesFound, this, [&]() {
-        QMessageBox::information(this, "No duplicates found",
-                                 "Scan did not find any files with identical CRC signatures.");
-    }, Qt::QueuedConnection);
+void MainWindow::dfFoundCRCDuplicates(const KLM::KaraokeFileList &dupFiles) {
+    auto *item = new QTreeWidgetItem(static_cast<QTreeWidget *>(nullptr), QStringList{
+            "Matches: " + QString::number(dupFiles.size()) + " - Checksum: " +
+            QString("%1").arg(dupFiles.at(0)->crc(), 0, 16, QLatin1Char('0'))});
+    for (const auto &kFile : dupFiles) {
+        auto child = new QTreeWidgetItem(static_cast<QTreeWidget *>(nullptr));
+        child->setData(0, Qt::DisplayRole, kFile->path());
+        child->setData(2, Qt::DisplayRole, QString::number(kFile->getBitrate()) + "kbps");
+        item->addChild(child);
+    }
+    item->setData(1, Qt::DisplayRole, (uint) dupFiles.size());
+    ui->treeWidgetDuplicates->addTopLevelItem(item);
+}
 
-    connect(dfCrc, &DupeFinderCRC::finished, this, [&]() {
-        ui->treeWidgetDuplicates->expandAll();
-        ui->treeWidgetDuplicates->sortByColumn(1, Qt::DescendingOrder);
-        for (int i = 0; i < ui->treeWidgetDuplicates->topLevelItemCount(); i++) {
-            ui->treeWidgetDuplicates->topLevelItem(i)->sortChildren(0, Qt::AscendingOrder);
-        }
-        ui->treeWidgetDuplicates->resizeColumnToContents(0);
-    }, Qt::QueuedConnection);
+void MainWindow::dfFoundATDuplicates(const KLM::KaraokeFileList &dupFiles) {
+    auto *item = new QTreeWidgetItem(static_cast<QTreeWidget *>(nullptr), QStringList{
+            "Matches: " + QString::number(dupFiles.size()) + " - Song: \"" + dupFiles.at(0)->atCombo() + "\""});
+    for (const auto &kFile : dupFiles) {
+        auto child = new QTreeWidgetItem(static_cast<QTreeWidget *>(nullptr));
+        child->setData(0, Qt::DisplayRole, kFile->path());
+        child->setData(2, Qt::DisplayRole, QString::number(kFile->getBitrate()) + "kbps");
+        item->addChild(child);
+    }
+    item->setData(1, Qt::DisplayRole, (uint) dupFiles.size());
+    ui->treeWidgetDuplicates->addTopLevelItem(item);
+}
+
+void MainWindow::dfFoundBadFiles(const KLM::KaraokeFileList &badFiles) {
+    auto *item = new QTreeWidgetItem(static_cast<QTreeWidget *>(nullptr), QStringList{
+            "Bad or corrupted files: " + QString::number(badFiles.size())});
+    for (const auto &kFile : badFiles) {
+        auto child = new QTreeWidgetItem(static_cast<QTreeWidget *>(nullptr));
+        child->setData(0, Qt::DisplayRole, kFile->path());
+        item->addChild(child);
+    }
+    item->setData(1, Qt::DisplayRole, 99999);
+    ui->treeWidgetDuplicates->addTopLevelItem(item);
+}
+
+void MainWindow::dfNoDupesFound() {
+    QMessageBox::information(this, "No duplicates found",
+                             "Scan did not detect any duplicate files.");
+}
+
+void MainWindow::dfFinished() {
+    ui->treeWidgetDuplicates->expandAll();
+    ui->treeWidgetDuplicates->sortByColumn(1, Qt::DescendingOrder);
+    for (int i = 0; i < ui->treeWidgetDuplicates->topLevelItemCount(); i++) {
+        ui->treeWidgetDuplicates->topLevelItem(i)->sortChildren(0, Qt::AscendingOrder);
+    }
+    ui->treeWidgetDuplicates->resizeColumnToContents(0);
 }
 
 MainWindow::~MainWindow() {
@@ -106,6 +141,23 @@ void MainWindow::runCrcScan() {
     workerThreadCrc->start();
 }
 
+void MainWindow::runATScan() {
+    if (m_path == QString()) {
+        QMessageBox::warning(this, "No directory selected", "You must select a directory before running a scan");
+        return;
+    }
+    ui->treeWidgetDuplicates->clear();
+    dfAT->setPath(m_path);
+    auto prgDlg = new QProgressDialog("Processing...", QString(), 0, 0, this);
+    prgDlg->setWindowTitle("Processing...");
+    prgDlg->setModal(true);
+    prgDlg->show();
+    connect(dfAT, &DupeFinderAT::newStepStarted, prgDlg, &QProgressDialog::setLabelText, Qt::QueuedConnection);
+    connect(dfAT, &DupeFinderAT::progressValChanged, prgDlg, &QProgressDialog::setValue, Qt::QueuedConnection);
+    connect(dfAT, &DupeFinderAT::stepMaxValChanged, prgDlg, &QProgressDialog::setMaximum, Qt::QueuedConnection);
+    connect(dfAT, &DupeFinderAT::finished, prgDlg, &QProgressDialog::deleteLater, Qt::QueuedConnection);
+    workerThreadAT->start();
+}
 
 void MainWindow::duplicatesContextMenuRequested(const QPoint &pos) {
     auto selItems = ui->treeWidgetDuplicates->selectedItems();

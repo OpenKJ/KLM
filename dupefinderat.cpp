@@ -1,4 +1,4 @@
-#include "dupefindercrc.h"
+#include "dupefinderat.h"
 #include <set>
 #include <algorithm>
 #include <QDirIterator>
@@ -7,31 +7,32 @@
 #include <spdlog/spdlog.h>
 
 
-void DupeFinderCRC::setPath(const QString &path) {
+void DupeFinderAT::setPath(const QString &path) {
     m_path = path;
 }
 
-DupeFinderCRC::DupeFinderCRC(QObject *parent) : QObject(parent) {
+DupeFinderAT::DupeFinderAT(QObject *parent) : QObject(parent) {
 }
 
-void DupeFinderCRC::findDupes() {
-    std::set<uint32_t> crcChecksums;
+void DupeFinderAT::findDupes() {
+    std::set<QString> atCombos;
     emit newStepStarted("Finding karaoke files...");
     emit stepMaxValChanged(0);
     spdlog::info("Getting files in path: {}", m_path.toStdString());
     auto kFiles = KLM::getKaraokeFiles(m_path);
-    spdlog::info("Found {} karaoke files, calculating crc32 checksums", kFiles.size());
-    emit newStepStarted("Calculating crc32 checksums");
+    spdlog::info("Found {} karaoke files, getting Artist/Title combinations", kFiles.size());
+    emit newStepStarted("Getting artist/title data...");
     emit stepMaxValChanged(kFiles.size());
     int processedFiles{0};
     for (const auto &kFile : kFiles) {
         emit progressValChanged(++processedFiles);
-        crcChecksums.insert(kFile->crc());
+        kFile->setNamingPattern(NamingPattern::PatternSAT());
+        atCombos.insert(kFile->atCombo());
     }
-    spdlog::info("Checksums calculated, finding duplicates");
-    emit newStepStarted("Scanning for duplicate checksums...");
-    emit stepMaxValChanged((int) crcChecksums.size());
-    int processedChecksums{0};
+    spdlog::info("Got artist/title data, finding duplicates");
+    emit newStepStarted("Scanning for duplicates...");
+    emit stepMaxValChanged((int) atCombos.size());
+    int processedCombos{0};
     uint dupesFound{0};
     spdlog::info("Checking for bad files...");
     KLM::KaraokeFileList badFiles;
@@ -47,18 +48,17 @@ void DupeFinderCRC::findDupes() {
     }
     else
         spdlog::info("No bad files detected");
-    for (const auto crc : crcChecksums) {
+    for (const auto &atCombo : atCombos) {
         KLM::KaraokeFileList newVec;
-        if (crc == 0) {
-
-            emit progressValChanged(++processedChecksums);
+        if (atCombo == "") {
+            emit progressValChanged(++processedCombos);
             continue;
         }
-        std::copy_if(kFiles.begin(), kFiles.end(), std::back_inserter(newVec), [crc](auto file) {
-            return (file->crc() == crc);
+        std::copy_if(kFiles.begin(), kFiles.end(), std::back_inserter(newVec), [atCombo](auto file) {
+            return (file->atCombo() == atCombo);
         });
-        kFiles.erase(std::remove_if(kFiles.begin(), kFiles.end(), [crc](auto file) {
-            return (file->crc() == crc);
+        kFiles.erase(std::remove_if(kFiles.begin(), kFiles.end(), [atCombo](auto file) {
+            return (file->atCombo() == atCombo);
         }), kFiles.end());
         if (newVec.size() > 1) {
             for (const auto& kFile : newVec)
@@ -66,7 +66,7 @@ void DupeFinderCRC::findDupes() {
             emit foundDuplicates(newVec);
             dupesFound++;
         }
-        emit progressValChanged(++processedChecksums);
+        emit progressValChanged(++processedCombos);
     }
     if (dupesFound == 0)
             emit noDupesFound();
