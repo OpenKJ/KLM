@@ -77,15 +77,15 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Archive build
-        uses: actions/upload-artifact@v2
-        with:
-          name: Win64 test build
-          path: installer
-
-      - id: upload-file
-        uses: google-github-actions/upload-cloud-storage@main
-        with:
-          credentials: ${{ secrets.gcp_credentials }}
-          path: "installer/OpenKJ-KLM-${{ steps.get_version.outputs.version-without-v }}-x86_64.exe"
-          destination: openkj-installers/klm
+#      - name: Archive build
+#        uses: actions/upload-artifact@v2
+#        with:
+#          name: Win64 test build
+#          path: installer
+#
+#      - id: upload-file
+#        uses: google-github-actions/upload-cloud-storage@main
+#        with:
+#          credentials: ${{ secrets.gcp_credentials }}
+#          path: "installer/OpenKJ-KLM-${{ steps.get_version.outputs.version-without-v }}-x86_64.exe"
+#          destination: openkj-installers/klm

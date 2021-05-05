@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Karaoke Library Manager
+Comment=OpenKJ Karaoke Library Manager
+Exec=/usr/bin/klm
+Icon=/usr/share/pixmaps/klm.svg
+Terminal=false
+Categories=AudioVideo;

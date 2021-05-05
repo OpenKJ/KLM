@@ -298,3 +298,18 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
             PROPERTY WIN32_EXECUTABLE true
     )
 endif()
+
+if (${CMAKE_SYSTEM_NAME} MATCHES "Linux" OR ${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
+    install(
+            TARGETS klm
+            DESTINATION bin
+    )
+    install(
+            FILES linux/klm.svg
+            DESTINATION share/pixmaps
+    )
+    install(
+            FILES linux/klm.desktop
+            DESTINATION share/applications
+    )
+endif ()
