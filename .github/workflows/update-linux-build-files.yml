@@ -18,7 +18,7 @@ jobs:
         # Build your program with the given configuration
         run: |
           sed -i "s/Version:.*/Version:\t\t${{ steps.get_version.outputs.major }}.${{ steps.get_version.outputs.minor }}.${{ steps.get_version.outputs.patch }}/" rpm/klm.spec
-          sed -i "s/Source0:.*/Source0:\t\t  https://github.com/ILightburn/KLM/releases/download/${{ steps.get_version.outputs.version }}/klm-${{ steps.get_version.outputs.version-without-v }}.tar.gz/" rpm/klm.spec
+          sed -i "s/Source0:.*/Source0:\thttps:\/\/github.com\/ILightburn\/KLM\/releases\/download\/${{ steps.get_version.outputs.version }}\/klm-${{ steps.get_version.outputs.version-without-v }}.tar.gz/" rpm/klm.spec
 #      - name: Update deb config
 #        run: |
 #          sudo apt-get update
