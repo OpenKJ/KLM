@@ -1,7 +1,8 @@
 cmake_minimum_required(VERSION 3.5)
 project(klm LANGUAGES CXX C)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
-option(BUILD_SHARED_LIBS "" NO)
+option(BUILD_SHARED_LIBS "" OFF)
+option(QUAZIP_INSTALL "" OFF)
 add_subdirectory(quazip)
 add_compile_definitions(
         TAGLIB_STATIC
