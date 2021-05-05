@@ -1,6 +1,6 @@
 Name:           klm
 Version:		0.1.9-ALPHA.1
-Release:        1:{?dist}
+Release:        1%{?dist}
 Summary:        OpenKJ karaoke library manager
 
 License:        GPL
