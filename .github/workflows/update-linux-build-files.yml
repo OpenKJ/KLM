@@ -14,7 +14,7 @@ jobs:
       - id: get_version
         uses: battila7/get-version-action@v2
 
-      - name: Update RPM specfile
+      - name: Update RPM specfile with git tag version
         # Build your program with the given configuration
         run: |
           sed -i "s/Version:.*/Version:\t\t${{ steps.get_version.outputs.version-without-v }}/" rpm/klm.spec
@@ -26,10 +26,15 @@ jobs:
 #          dch -D bionic -v ${{ steps.get_version.outputs.version-without-v }}-1~bionic "Automatc update from github tag"
 #          dch -r "Autobuild from git commit"
 
-      - name: Update resources
+      - name: Commit changes to repo
         uses: test-room-7/action-update-file@v1
         with:
           file-path: |
             rpm/klm.spec
           commit-msg: Update version from git tag
           github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Trigger COPR build
+        run: |
+          curl -X POST https://copr.fedorainfracloud.org/webhooks/custom/16440/a71138a2-bc88-4b77-8af0-bc3b1697ac35/klm/
+
