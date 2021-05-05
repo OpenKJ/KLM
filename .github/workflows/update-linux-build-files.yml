@@ -17,7 +17,7 @@ jobs:
       - name: Update RPM specfile with git tag version
         # Build your program with the given configuration
         run: |
-          sed -i "s/Version:.*/Version:\t\t${{ steps.get_version.outputs.version-without-v }}/" rpm/klm.spec
+          sed -i "s/Version:.*/Version:\t\t${{ steps.get_version.outputs.major }}.${{ steps.get_version.outputs.minor }}.${{ steps.get_version.outputs.patch }}/" rpm/klm.spec
 
 #      - name: Update deb config
 #        run: |
