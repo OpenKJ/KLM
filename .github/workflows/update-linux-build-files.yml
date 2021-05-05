@@ -19,12 +19,12 @@ jobs:
         run: |
           sed -i "s/Version:.*/Version:\t\t${{ steps.get_version.outputs.version-without-v }}/" rpm/klm.spec
 
-      - name: Update deb config
-        run: |
-          sudo apt-get update
-          sudo apt-get install devscripts
-          dch -D bionic -v ${{ steps.get_version.outputs.version-without-v }}-1~bionic "Automatc update from github tag"
-          dch -r "Autobuild from git commit"
+#      - name: Update deb config
+#        run: |
+#          sudo apt-get update
+#          sudo apt-get install devscripts
+#          dch -D bionic -v ${{ steps.get_version.outputs.version-without-v }}-1~bionic "Automatc update from github tag"
+#          dch -r "Autobuild from git commit"
 
       - name: Update resources
         uses: test-room-7/action-update-file@v1
