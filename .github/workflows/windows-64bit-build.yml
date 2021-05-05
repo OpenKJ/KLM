@@ -68,3 +68,10 @@ jobs:
         with:
           name: Win64 test build
           path: installer
+
+      - id: upload-file
+        uses: google-github-actions/upload-cloud-storage@main
+        with:
+          credentials: ${{ secrets.gcp_credentials }}
+          path: installer
+          destination: openkj-installers/klm/
