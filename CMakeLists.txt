@@ -54,6 +54,9 @@ set(QUAZIP_SOURCES
         quazip/quazip/quazipnewinfo.cpp
         )
 
+include_directories(
+        zlib
+)
 set(ZLIB_SOURCES
         zlib/adler32.c
         zlib/compress.c
