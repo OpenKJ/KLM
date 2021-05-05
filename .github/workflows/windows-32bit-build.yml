@@ -75,7 +75,7 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: "installer/OpenKJ-KLM-${{ steps.get_version.outputs.version-without-v }}-x86.exe"
-          prerelease: (contains(${{ steps.get_version.outputs.prerelease }}, 'alpha') || contains(${{ steps.get_version.outputs.prerelease }}, 'beta'))
+          prerelease: ${{ contains(steps.get_version.outputs.prerelease, 'alpha') || contains(steps.get_version.outputs.prerelease, 'beta') }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
