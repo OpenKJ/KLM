@@ -5,7 +5,7 @@ Summary:        OpenKJ karaoke library manager
 
 License:        GPL
 URL:            https://openkj.org
-Source0:		klm-0.1.9-ALPHA.5.tar.gz
+Source0:	https://github.com/ILightburn/KLM/releases/download/v0.1.9-ALPHA.8/klm-0.1.9-ALPHA.8.tar.gz
 
 BuildRequires:  cmake qt5-qtbase-devel zlib-devel git
 Requires:       qt5-qtbase zlib
