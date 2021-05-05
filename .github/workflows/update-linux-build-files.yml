@@ -29,8 +29,8 @@ jobs:
       - name: Create fedora tarball
         run: |
           cd ..
-          tar -zcf klm-${{ steps.get_version.outputs.version-without-v }}.tar.gz klm
-          mv klm*.tar.gz klm/
+          tar -zcf klm-${{ steps.get_version.outputs.version-without-v }}.tar.gz KLM
+          mv klm*.tar.gz KLM/
 
       - name: Release
         uses: softprops/action-gh-release@v1
