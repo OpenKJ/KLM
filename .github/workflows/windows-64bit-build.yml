@@ -2,7 +2,6 @@ name: Windows 64bit Build
 
 on:
   push:
-    branches: [ main ]
     tags:
       - '*.*.*'
 
@@ -17,8 +16,8 @@ jobs:
           submodules: recursive
       - uses: seanmiddleditch/gha-setup-ninja@master
 
-      - name: Put version tag in the environment
-        run: echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
+      - id: get_version
+        uses: battila7/get-version-action@v2
 
       - name: Cache Qt
         id: cache-qt
@@ -64,7 +63,7 @@ jobs:
       - name: Create Installer
         run: |
           cp windows\klm-x86_64.iss inst.iss
-          sed -i "s/#define MyAppVersion.*/#define MyAppVersion \"${{ env.RELEASE_VERSION }}\"/" cd/inst.iss
+          sed -i "s/#define MyAppVersion.*/#define MyAppVersion \"${{ steps.get_version.outputs.version-without-v }}\"/" cd/inst.iss
           mkdir installer
           "c:/Program Files (x86)/Inno Setup 6/iscc.exe" inst.iss /Oinstaller\
         shell: bash
@@ -79,5 +78,5 @@ jobs:
         uses: google-github-actions/upload-cloud-storage@main
         with:
           credentials: ${{ secrets.gcp_credentials }}
-          path: "installer/OpenKJ-KLM-${{ env.RELEASE_VERSION }}.exe"
+          path: "installer/OpenKJ-KLM-${{ steps.get_version.outputs.version-without-v }}.exe"
           destination: openkj-installers/klm/
