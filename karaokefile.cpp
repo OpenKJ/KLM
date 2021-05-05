@@ -118,7 +118,7 @@ QString KaraokeFile::artist() const {
 void KaraokeFile::applyNamingPattern() {
     auto parts = QFileInfo(m_path).completeBaseName().split(m_namingPattern.sep);
     if (m_namingPattern.songIdPos != -1 && m_namingPattern.songIdPos < parts.size()) {
-        m_songid = parts.at(m_namingPattern.songIdPos);
+        m_songid = parts.at(m_namingPattern.songIdPos).toUpper();
         m_songid.replace('_', ' ');
     } else
         m_songid = "";

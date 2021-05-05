@@ -353,6 +353,8 @@ add_executable(klm
         dupefindercrc.h
         dupefinderat.cpp
         dupefinderat.h
+        dupefindersid.cpp
+        dupefindersid.h
         qcrc32.cpp
         qcrc32.h
         images.qrc
