@@ -63,7 +63,7 @@ jobs:
       - name: Create Installer
         run: |
           cp windows/klm-x86_64.iss inst.iss
-          sed -i "s/#define MyAppVersion.*/#define MyAppVersion \"${{ steps.get_version.outputs.version-without-v }}\"/" cd/inst.iss
+          sed -i "s/#define MyAppVersion.*/#define MyAppVersion \"${{ steps.get_version.outputs.version-without-v }}\"/" inst.iss
           mkdir installer
           "c:/Program Files (x86)/Inno Setup 6/iscc.exe" inst.iss /Oinstaller\
         shell: bash
