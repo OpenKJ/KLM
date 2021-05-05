@@ -68,6 +68,13 @@ jobs:
           "c:/Program Files (x86)/Inno Setup 6/iscc.exe" inst.iss
         shell: bash
 
+      - name: Release
+        uses: fnkr/github-action-ghr@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GHR_PATH: "installer/OpenKJ-KLM-${{ steps.get_version.outputs.version-without-v }}-x86_64.exe"
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Archive build
         uses: actions/upload-artifact@v2
         with:
@@ -78,5 +85,5 @@ jobs:
         uses: google-github-actions/upload-cloud-storage@main
         with:
           credentials: ${{ secrets.gcp_credentials }}
-          path: "installer/OpenKJ-KLM-${{ steps.get_version.outputs.version-without-v }}.exe"
-          destination: openkj-installers/klm/
+          path: "installer/OpenKJ-KLM-${{ steps.get_version.outputs.version-without-v }}-x86_64.exe"
+          destination: openkj-installers/klm

@@ -57,7 +57,7 @@ private:
     uint m_audioBitrate{0};
     bool m_fileScanned{false};
     NamingPattern m_namingPattern;
-    static std::vector<std::string> supportedAFileExtensions() { return {".mp3", ".ogg", ".wav"}; }
+    static std::vector<std::string> supportedAFileExtensions() { return {".mp3", ".ogg", ".wav", ".flac", ".m4a"}; }
     void scanFile();
     void scanZipFile();
     void scanCdgFile();
