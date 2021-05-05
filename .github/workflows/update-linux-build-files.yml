@@ -18,13 +18,27 @@ jobs:
         # Build your program with the given configuration
         run: |
           sed -i "s/Version:.*/Version:\t\t${{ steps.get_version.outputs.major }}.${{ steps.get_version.outputs.minor }}.${{ steps.get_version.outputs.patch }}/" rpm/klm.spec
-          sed -i "s/Source0:.*/Source0:\t\tklm-${{ steps.get_version.outputs.version-without-v }}.tar.gz/" rpm/klm.spec
+          sed -i "s/Source0:.*/Source0:\t\t  https://github.com/ILightburn/KLM/releases/download/${{ steps.get_version.outputs.version }}/klm-${{ steps.get_version.outputs.version-without-v }}.tar.gz/" rpm/klm.spec
 #      - name: Update deb config
 #        run: |
 #          sudo apt-get update
 #          sudo apt-get install devscripts
 #          dch -D bionic -v ${{ steps.get_version.outputs.version-without-v }}-1~bionic "Automatc update from github tag"
 #          dch -r "Autobuild from git commit"
+
+      - name: Create fedora tarball
+        run: |
+          cd ..
+          tar -zcf klm-${{ steps.get_version.outputs.version-without-v }}.tar.gz klm
+          mv klm*.tar.gz klm/
+
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: "klm-${{ steps.get_version.outputs.version-without-v }}.tar.gz"
+          prerelease: ${{ contains(steps.get_version.outputs.prerelease, 'alpha') || contains(steps.get_version.outputs.prerelease, 'beta') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Commit changes to repo
         uses: test-room-7/action-update-file@v1
