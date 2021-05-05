@@ -10,6 +10,7 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
 add_compile_definitions(
         TAGLIB_STATIC
+        QUAZIP_STATIC
 )
 
 include_directories(
