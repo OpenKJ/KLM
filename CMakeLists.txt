@@ -1,12 +1,59 @@
 cmake_minimum_required(VERSION 3.5)
 project(klm LANGUAGES CXX C)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
-option(BUILD_SHARED_LIBS "" OFF)
-option(QUAZIP_INSTALL "" OFF)
-add_subdirectory(quazip)
+
+
+    option(BUILD_SHARED_LIBS "" OFF)
+    option(QUAZIP_INSTALL "" OFF)
+    #add_subdirectory(quazip)
+
+
 add_compile_definitions(
         TAGLIB_STATIC
 )
+
+include_directories(
+        quazip
+        quazip/quazip
+)
+set(QUAZIP_HEADERS
+        quazip/quazip/JlCompress.h
+        quazip/quazip/ioapi.h
+        quazip/quazip/minizip_crypt.h
+        quazip/quazip/quaadler32.h
+        quazip/quazip/quachecksum32.h
+        quazip/quazip/quacrc32.h
+        quazip/quazip/quagzipfile.h
+        quazip/quazip/quaziodevice.h
+        quazip/quazip/quazip.h
+        quazip/quazip/quazip_global.h
+        quazip/quazip/quazip_qt_compat.h
+        quazip/quazip/quazipdir.h
+        quazip/quazip/quazipfile.h
+        quazip/quazip/quazipfileinfo.h
+        quazip/quazip/quazipnewinfo.h
+        quazip/quazip/unzip.h
+        quazip/quazip/zip.h
+        )
+
+set(QUAZIP_SOURCES
+        ${QUAZIP_HEADERS}
+        quazip/quazip/unzip.c
+        quazip/quazip/zip.c
+        quazip/quazip/JlCompress.cpp
+        quazip/quazip/qioapi.cpp
+        quazip/quazip/quaadler32.cpp
+        quazip/quazip/quachecksum32.cpp
+        quazip/quazip/quacrc32.cpp
+        quazip/quazip/quagzipfile.cpp
+        quazip/quazip/quaziodevice.cpp
+        quazip/quazip/quazip.cpp
+        quazip/quazip/quazipdir.cpp
+        quazip/quazip/quazipfile.cpp
+        quazip/quazip/quazipfileinfo.cpp
+        quazip/quazip/quazipnewinfo.cpp
+        )
+
 include_directories(
         taglib/taglib
         taglib/taglib/toolkit
@@ -271,7 +318,7 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
     set(WINDOWS_RC_ICON
             icons/appicon.rc
             )
-endif()
+endif ()
 
 add_executable(klm
         main.cpp
@@ -288,17 +335,18 @@ add_executable(klm
         qcrc32.h
         images.qrc
         ${TAGLIB_SOURCES}
+        ${QUAZIP_SOURCES}
         ${WINDOWS_RC_ICON}
         )
 
-target_link_libraries(klm PRIVATE Qt${QT_VERSION_MAJOR}::Widgets spdlog::spdlog_header_only QuaZip::QuaZip)
+target_link_libraries(klm PRIVATE Qt${QT_VERSION_MAJOR}::Widgets spdlog::spdlog_header_only z)
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
     set_property(
             TARGET klm
             PROPERTY WIN32_EXECUTABLE true
     )
-endif()
+endif ()
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Linux" OR ${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
     install(
