@@ -26,6 +26,7 @@ UninstallDisplayName="Karaoke Library Manager"
 UninstallDisplayIcon={uninstallexe}
 WizardStyle=modern
 SetupIconFile="output\klm.ico"
+OutputDir="installer"
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
