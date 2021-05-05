@@ -54,6 +54,24 @@ set(QUAZIP_SOURCES
         quazip/quazip/quazipnewinfo.cpp
         )
 
+set(ZLIB_SOURCES
+        zlib/adler32.c
+        zlib/compress.c
+        zlib/crc32.c
+        zlib/deflate.c
+        zlib/gzclose.c
+        zlib/gzlib.c
+        zlib/gzread.c
+        zlib/gzwrite.c
+        zlib/inflate.c
+        zlib/infback.c
+        zlib/inftrees.c
+        zlib/inffast.c
+        zlib/trees.c
+        zlib/uncompr.c
+        zlib/zutil.c
+        )
+
 include_directories(
         taglib/taglib
         taglib/taglib/toolkit
@@ -337,9 +355,10 @@ add_executable(klm
         ${TAGLIB_SOURCES}
         ${QUAZIP_SOURCES}
         ${WINDOWS_RC_ICON}
+        ${ZLIB_SOURCES}
         )
 
-target_link_libraries(klm PRIVATE Qt${QT_VERSION_MAJOR}::Widgets spdlog::spdlog_header_only z)
+target_link_libraries(klm PRIVATE Qt${QT_VERSION_MAJOR}::Widgets spdlog::spdlog_header_only)
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
     set_property(
