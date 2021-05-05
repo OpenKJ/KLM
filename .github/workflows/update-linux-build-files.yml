@@ -29,7 +29,11 @@ jobs:
       - name: Create fedora tarball
         run: |
           cd ..
-          tar -zcf klm-${{ steps.get_version.outputs.version-without-v }}.tar.gz KLM
+          cp -R KLM klm-${{ steps.get_version.outputs.major }}.${{ steps.get_version.outputs.minor }}.${{ steps.get_version.outputs.patch }}
+          cd klm-${{ steps.get_version.outputs.major }}.${{ steps.get_version.outputs.minor }}.${{ steps.get_version.outputs.patch }}
+          git submodule update --init
+          cd ..
+          tar -zcf klm-${{ steps.get_version.outputs.version-without-v }}.tar.gz klm-${{ steps.get_version.outputs.major }}.${{ steps.get_version.outputs.minor }}.${{ steps.get_version.outputs.patch }}
           mv klm*.tar.gz KLM/
 
       - name: Release

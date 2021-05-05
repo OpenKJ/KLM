@@ -17,7 +17,6 @@ Tool to help manage large karaoke libraries (mp3g, mp3g-zip, and video files)
 %setup
 
 %build
-git submodule update --init
 %cmake -DCMAKE_BUILD_TYPE=Release
 %cmake_build
 
