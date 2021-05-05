@@ -1,5 +1,5 @@
 Name:           klm
-Version:	0.1.7
+Version:		0.1.8-ALPHA.1
 Release:        1:{?dist}
 Summary:        OpenKJ karaoke library manager
 
