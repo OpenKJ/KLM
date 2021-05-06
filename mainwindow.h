@@ -7,6 +7,7 @@
 #include "dupefindercrc.h"
 #include "dupefinderat.h"
 #include "dupefindersid.h"
+#include "tablemodelpaths.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -28,13 +29,22 @@ private:
     DupeFinderAT *dfAT;
     QThread *workerThreadSID;
     DupeFinderSID *dfSID;
+    KLM::KaraokePathList m_paths;
+    TableModelPaths pathsModel;
 
-    void browseForPath();
     void runCrcScan();
     void runATScan();
     void runSIDScan();
     bool moveFile(const QString &filename, const QString &destPath);
     bool removeFile(const QString &filename);
+    void savePaths();
+    void restorePaths();
+
+public slots:
+    void onAddPathClicked();
+    void onRemovePathClicked();
+    void onChangePatternClicked();
+    void onTableViewPathSelectionChanged();
 
 private slots:
     void duplicatesContextMenuRequested(const QPoint &pos);

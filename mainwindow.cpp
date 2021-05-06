@@ -5,15 +5,22 @@
 #include <QFileDialog>
 #include <set>
 #include <QTreeWidgetItem>
+#include <QListWidgetItem>
 #include <QMessageBox>
 #include <QProgressDialog>
 #include <spdlog/spdlog.h>
 #include <karaokefile.h>
 #include <QFontMetrics>
+#include <QInputDialog>
+#include <QSettings>
 
 MainWindow::MainWindow(QWidget *parent)
         : QMainWindow(parent), ui(new Ui::MainWindow) {
     ui->setupUi(this);
+    QApplication::setOrganizationName("OpenKJ Project");
+    QApplication::setApplicationName("KLM");
+    QApplication::setApplicationDisplayName("Karaoke Library Manager");
+
     ui->treeWidgetDuplicates->setColumnCount(3);
     ui->treeWidgetDuplicates->hideColumn(1);
     ui->treeWidgetDuplicates->setHeaderHidden(false);
@@ -22,6 +29,15 @@ MainWindow::MainWindow(QWidget *parent)
                                                 10);
     ui->treeWidgetDuplicates->setColumnWidth(0, 200);
     ui->treeWidgetDuplicates->setHeaderLabels({"File", "Count", "Audio Bitrate"});
+    ui->treeWidgetDuplicates->header()->setSectionResizeMode(0, QHeaderView::Stretch);
+    ui->treeWidgetDuplicates->header()->setSectionResizeMode(1, QHeaderView::ResizeToContents);
+    ui->pushButtonChangePattern->setEnabled(false);
+    ui->pushButtonRemovePath->setEnabled(false);
+    ui->tableViewPaths->setModel(&pathsModel);
+    ui->tableViewPaths->horizontalHeader()->setSectionResizeMode(TableModelPaths::PATH, QHeaderView::Stretch);
+    ui->tableViewPaths->horizontalHeader()->setSectionResizeMode(TableModelPaths::PATTERN, QHeaderView::Interactive);
+    ui->tableViewPaths->setColumnWidth(TableModelPaths::PATTERN, QFontMetrics(QApplication::font()).horizontalAdvance("_SongID - Artist - Title_"));
+
     workerThreadCrc = new QThread(nullptr);
     workerThreadAT = new QThread(nullptr);
     workerThreadSID = new QThread(nullptr);
@@ -36,15 +52,15 @@ MainWindow::MainWindow(QWidget *parent)
     dfSID->moveToThread(workerThreadSID);
     
     // UI connections
-    connect(ui->pushButtonBrowse, &QPushButton::clicked, [&]() { browseForPath(); });
     connect(ui->pushButtonCrc, &QPushButton::clicked, [&]() { runCrcScan(); });
     connect(ui->pushButtonAT, &QPushButton::clicked, [&]() { runATScan(); });
     connect(ui->pushButtonSongId, &QPushButton::clicked, [&]() { runSIDScan(); });
     connect(ui->treeWidgetDuplicates, &QTreeWidget::customContextMenuRequested, this,
             &MainWindow::duplicatesContextMenuRequested);
-    connect(ui->lineEditPath, &QLineEdit::textChanged, [&](const QString &text) {
-        m_path = ui->lineEditPath->text();
-    });
+    connect(ui->pushButtonAddPath, &QPushButton::clicked, this, &MainWindow::onAddPathClicked);
+    connect(ui->pushButtonRemovePath, &QPushButton::clicked, this, &MainWindow::onRemovePathClicked);
+    connect(ui->pushButtonChangePattern, &QPushButton::clicked, this, &MainWindow::onChangePatternClicked);
+    connect(ui->tableViewPaths, &QTableView::clicked, this, &MainWindow::onTableViewPathSelectionChanged);
 
     // CRC scan connections
     connect(workerThreadCrc, &QThread::started, dfCrc, &DupeFinderCRC::findDupes);
@@ -69,6 +85,9 @@ MainWindow::MainWindow(QWidget *parent)
     connect(dfSID, &DupeFinderSID::foundBadFiles, this, &MainWindow::dfFoundBadFiles, Qt::QueuedConnection);
     connect(dfSID, &DupeFinderSID::noDupesFound, this, &MainWindow::dfNoDupesFound, Qt::QueuedConnection);
     connect(dfSID, &DupeFinderSID::finished, this, &MainWindow::dfFinished, Qt::QueuedConnection);
+
+    restorePaths();
+
 }
 
 void MainWindow::dfFoundCRCDuplicates(const KLM::KaraokeFileList &dupFiles) {
@@ -96,6 +115,7 @@ void MainWindow::dfFoundATDuplicates(const KLM::KaraokeFileList &dupFiles) {
     }
     item->setData(1, Qt::DisplayRole, (uint) dupFiles.size());
     ui->treeWidgetDuplicates->addTopLevelItem(item);
+    item->setExpanded(true);
 }
 
 void MainWindow::dfFoundSIDDuplicates(const KLM::KaraokeFileList &dupFiles) {
@@ -141,21 +161,13 @@ MainWindow::~MainWindow() {
     delete ui;
 }
 
-void MainWindow::browseForPath() {
-    m_path = QFileDialog::getExistingDirectory(this, "Select karaoke library path", QString(),
-                                               QFileDialog::DontUseNativeDialog | QFileDialog::ShowDirsOnly);
-    ui->lineEditPath->setText(m_path);
-    spdlog::info("User selected path: {}", m_path.toStdString());
-
-}
-
 void MainWindow::runCrcScan() {
-    if (m_path == QString()) {
-        QMessageBox::warning(this, "No directory selected", "You must select a directory before running a scan");
+    if (pathsModel.rowCount() == 0) {
+        QMessageBox::warning(this, "No paths to scan", "You must add at least one karaoke path before running a scan");
         return;
     }
     ui->treeWidgetDuplicates->clear();
-    dfCrc->setPath(m_path);
+    dfCrc->setPaths(pathsModel.paths());
     auto prgDlg = new QProgressDialog("Processing...", QString(), 0, 0, this);
     prgDlg->setWindowTitle("Processing...");
     prgDlg->setModal(true);
@@ -168,12 +180,12 @@ void MainWindow::runCrcScan() {
 }
 
 void MainWindow::runATScan() {
-    if (m_path == QString()) {
-        QMessageBox::warning(this, "No directory selected", "You must select a directory before running a scan");
+    if (pathsModel.rowCount() == 0) {
+        QMessageBox::warning(this, "No paths to scan", "You must add at least one karaoke path before running a scan");
         return;
     }
     ui->treeWidgetDuplicates->clear();
-    dfAT->setPath(m_path);
+    dfAT->setPaths(pathsModel.paths());
     auto prgDlg = new QProgressDialog("Processing...", QString(), 0, 0, this);
     prgDlg->setWindowTitle("Processing...");
     prgDlg->setModal(true);
@@ -186,12 +198,12 @@ void MainWindow::runATScan() {
 }
 
 void MainWindow::runSIDScan() {
-    if (m_path == QString()) {
-        QMessageBox::warning(this, "No directory selected", "You must select a directory before running a scan");
+    if (pathsModel.rowCount() == 0) {
+        QMessageBox::warning(this, "No paths to scan", "You must add at least one karaoke path before running a scan");
         return;
     }
     ui->treeWidgetDuplicates->clear();
-    dfSID->setPath(m_path);
+    dfSID->setPaths(pathsModel.paths());
     auto prgDlg = new QProgressDialog("Processing...", QString(), 0, 0, this);
     prgDlg->setWindowTitle("Processing...");
     prgDlg->setModal(true);
@@ -310,6 +322,180 @@ bool MainWindow::removeFile(const QString &filename) {
         }
     }
     return true;
+}
+
+void MainWindow::savePaths()
+{
+    QSettings settings;
+    auto paths = pathsModel.paths();
+    settings.remove("karaokePaths");
+    settings.beginWriteArray("karaokePaths");
+    int idx{0};
+    for (auto &path : paths)
+    {
+        settings.setArrayIndex(idx++);
+        settings.setValue("path", path->path());
+        settings.setValue("patternName", path->pattern().name);
+        settings.setValue("patternSep", path->pattern().sep);
+        settings.setValue("patternArtistPos", path->pattern().artistPos);
+        settings.setValue("patternTitlePos", path->pattern().titlePos);
+        settings.setValue("patternSongIdPos", path->pattern().songIdPos);
+    }
+    settings.endArray();
+}
+
+void MainWindow::restorePaths()
+{
+    QSettings settings;
+    int size = settings.beginReadArray("karaokePaths");
+    for (int i = 0; i < size; ++i) {
+        QString path, patternName, patternSep;
+        int patternArtistPos, patternTitlePos, patternSongIdPos;
+        settings.setArrayIndex(i);
+        path = settings.value("path").toString();
+        patternName = settings.value("patternName").toString();
+        patternSep = settings.value("patternSep").toString();
+        patternArtistPos = settings.value("patternArtistPos").toInt();
+        patternTitlePos = settings.value("patternTitlePos").toInt();
+        patternSongIdPos = settings.value("patternSongIdPos").toInt();
+        pathsModel.addPath(
+                    QSharedPointer<KaraokePath>(
+                        new KaraokePath(
+                            path,
+                            NamingPattern{
+                                patternName,
+                                patternSep,
+                                patternSongIdPos,
+                                patternArtistPos,
+                                patternTitlePos
+                            })));
+
+    }
+    settings.endArray();
+}
+
+
+
+void MainWindow::onAddPathClicked()
+{
+    auto path = QFileDialog::getExistingDirectory(this, "Select karaoke library path", QString(),
+                                               QFileDialog::DontUseNativeDialog | QFileDialog::ShowDirsOnly);
+    if (path.isEmpty())
+        return;
+
+    if (pathsModel.exists(path))
+    {
+        QMessageBox::warning(this, "Unable to add", "Sorry that path already exists in the paths list");
+        return;
+    }
+
+    QStringList patterns{
+        "SongID - Artist - Title",
+        "SongID - Title - Artist",
+        "Artist - Title - SongID",
+        "Title - Artist - SongID",
+        "Artist - Title",
+        "Title - Artist"
+    };
+    auto selection = QInputDialog::getItem(this, "Naming Pattern", "Naming pattern of files in this directory", patterns, -1, false);
+    if (selection.isEmpty())
+        return;
+    int idx = patterns.indexOf(selection);
+    NamingPattern pattern;
+    switch (idx) {
+    case 0:
+        pattern = NamingPattern::PatternSAT();
+        break;
+    case 1:
+        pattern = NamingPattern::PatternSTA();
+        break;
+    case 2:
+        pattern = NamingPattern::PatternATS();
+        break;
+    case 3:
+        pattern = NamingPattern::PatternTAS();
+        break;
+    case 4:
+        pattern = NamingPattern::PatternAT();
+        break;
+    case 5:
+        pattern = NamingPattern::PatternTA();
+    default:
+        spdlog::error("User somehow picked a non-existent naming pattern, something is very wrong");
+        return;
+    }
+    pathsModel.addPath(QSharedPointer<KaraokePath>(new KaraokePath(path, pattern)));
+    savePaths();
+}
+
+void MainWindow::onRemovePathClicked()
+{
+    if (ui->tableViewPaths->selectionModel()->selectedIndexes().isEmpty())
+        return;
+    QString path = ui->tableViewPaths->selectionModel()->selectedRows(0).at(0).data(Qt::DisplayRole).toString();
+    pathsModel.remove(path);
+    savePaths();
+}
+
+void MainWindow::onChangePatternClicked()
+{
+    if (ui->tableViewPaths->selectionModel()->selectedIndexes().isEmpty())
+        return;
+    QString path = ui->tableViewPaths->selectionModel()->selectedRows(0).at(0).data(Qt::DisplayRole).toString();
+    if (!pathsModel.exists(path))
+        return;
+    QStringList patterns{
+        "SongID - Artist - Title",
+        "SongID - Title - Artist",
+        "Artist - Title - SongID",
+        "Title - Artist - SongID",
+        "Artist - Title",
+        "Title - Artist"
+    };
+    auto selection = QInputDialog::getItem(this, "Change Naming Pattern", "Naming pattern of files in this directory", patterns, -1, false);
+    if (selection.isEmpty())
+        return;
+    int idx = patterns.indexOf(selection);
+    NamingPattern pattern;
+    switch (idx) {
+    case 0:
+        pattern = NamingPattern::PatternSAT();
+        break;
+    case 1:
+        pattern = NamingPattern::PatternSTA();
+        break;
+    case 2:
+        pattern = NamingPattern::PatternATS();
+        break;
+    case 3:
+        pattern = NamingPattern::PatternTAS();
+        break;
+    case 4:
+        pattern = NamingPattern::PatternAT();
+        break;
+    case 5:
+        pattern = NamingPattern::PatternTA();
+    default:
+        spdlog::error("User somehow picked a non-existent naming pattern, something is very wrong");
+        return;
+    }
+    // todo: add code to do the change;
+    pathsModel.modifyNamingPattern(path, pattern);
+    savePaths();
+}
+
+void MainWindow::onTableViewPathSelectionChanged()
+{
+    if (ui->tableViewPaths->selectionModel()->selectedRows(0).isEmpty())
+    {
+        ui->pushButtonChangePattern->setEnabled(false);
+        ui->pushButtonRemovePath->setEnabled(false);
+    }
+    else
+    {
+        ui->pushButtonChangePattern->setEnabled(true);
+        ui->pushButtonRemovePath->setEnabled(true);
+    }
 }
 
 bool MainWindow::moveFile(const QString &filename, const QString &destPath) {

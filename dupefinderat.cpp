@@ -7,8 +7,9 @@
 #include <spdlog/spdlog.h>
 
 
-void DupeFinderAT::setPath(const QString &path) {
-    m_path = path;
+void DupeFinderAT::setPaths(KLM::KaraokePathList paths)
+{
+    m_paths = paths;
 }
 
 DupeFinderAT::DupeFinderAT(QObject *parent) : QObject(parent) {
@@ -18,15 +19,19 @@ void DupeFinderAT::findDupes() {
     std::set<QString> atCombos;
     emit newStepStarted("Finding karaoke files...");
     emit stepMaxValChanged(0);
-    spdlog::info("Getting files in path: {}", m_path.toStdString());
-    auto kFiles = KLM::getKaraokeFiles(m_path);
-    spdlog::info("Found {} karaoke files, getting Artist/Title combinations", kFiles.size());
+    KLM::KaraokeFileList kFiles;
+    for ( auto path : m_paths )
+    {
+        spdlog::info("Getting files in path: {}", path->path().toStdString());
+        kFiles.append(path->files());
+        spdlog::info("Found {} karaoke files", path->files().size());
+    }
+    spdlog::info("Found a totoal of {} karaoke files in all paths, getting artist/title data...", kFiles.size());
     emit newStepStarted("Getting artist/title data...");
     emit stepMaxValChanged(kFiles.size());
     int processedFiles{0};
     for (const auto &kFile : kFiles) {
         emit progressValChanged(++processedFiles);
-        kFile->setNamingPattern(NamingPattern::PatternSAT());
         atCombos.insert(kFile->atCombo());
     }
     spdlog::info("Got artist/title data, finding duplicates");

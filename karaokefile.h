@@ -6,6 +6,7 @@
 #include <QObject>
 #include <QDirIterator>
 #include <QSharedPointer>
+#include <QVariant>
 
 struct NamingPattern {
     QString name{"SongID - Artist - Title"};
@@ -38,6 +39,9 @@ struct NamingPattern {
         return NamingPattern{"Title - Artist", " - ", -1, 1, 0};
     }
 };
+
+
+
 
 class KaraokeFile : public QObject {
     Q_OBJECT
@@ -82,7 +86,7 @@ public:
     static std::vector<std::string> supportedKFileExtensions() { return {"cdg", "zip", "mp4", "mkv", "avi", "ogv"}; }
     [[nodiscard]] std::string getErrCodeStr() const;
     [[nodiscard]] ErrorCode getErrorCode() const {return m_errorCode;}
-    explicit KaraokeFile(QString path, QObject *parent = nullptr);
+    explicit KaraokeFile(QString path, NamingPattern pattern, QObject *parent = nullptr);
     [[nodiscard]] QString artist() const;
     [[nodiscard]] QString title() const { return m_title; }
     [[nodiscard]] QString atCombo() const { return m_atCombo; }
@@ -100,7 +104,7 @@ public:
 
 namespace KLM {
 typedef QVector<QSharedPointer<KaraokeFile>> KaraokeFileList;
-static KaraokeFileList getKaraokeFiles(const QString &path) {
+static KaraokeFileList getKaraokeFiles(const QString &path, NamingPattern &pattern) {
     KaraokeFileList kFiles;
     QDirIterator it(path, QDirIterator::Subdirectories);
     while (it.hasNext()) {
@@ -108,11 +112,31 @@ static KaraokeFileList getKaraokeFiles(const QString &path) {
         auto ext = it.fileInfo().completeSuffix().toLower();
         for (const auto &sExt : KaraokeFile::supportedKFileExtensions())
             if (ext == sExt.c_str()) {
-                kFiles.push_back(QSharedPointer<KaraokeFile>(new KaraokeFile(it.filePath())));
+                kFiles.push_back(QSharedPointer<KaraokeFile>(new KaraokeFile(it.filePath(), pattern)));
             }
     }
     return kFiles;
 }
 }
+
+class KaraokePath : public QObject {
+    Q_OBJECT
+    QString m_path;
+    NamingPattern m_pattern;
+    KLM::KaraokeFileList m_files;
+
+public:
+    explicit KaraokePath(QString path, NamingPattern pattern, QObject *parent = nullptr);
+    KLM::KaraokeFileList& files(const bool forceRefresh = false);
+    const QString &path() const;
+    const NamingPattern &pattern() const;
+    void setPattern(const NamingPattern &newPattern);
+};
+
+
+namespace KLM {
+    typedef QVector<QSharedPointer<KaraokePath>> KaraokePathList;
+}
+
 
 #endif // KARAOKEFILE_H

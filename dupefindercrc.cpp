@@ -7,8 +7,9 @@
 #include <spdlog/spdlog.h>
 
 
-void DupeFinderCRC::setPath(const QString &path) {
-    m_path = path;
+void DupeFinderCRC::setPaths(KLM::KaraokePathList paths)
+{
+    m_paths = paths;
 }
 
 DupeFinderCRC::DupeFinderCRC(QObject *parent) : QObject(parent) {
@@ -18,9 +19,14 @@ void DupeFinderCRC::findDupes() {
     std::set<uint32_t> crcChecksums;
     emit newStepStarted("Finding karaoke files...");
     emit stepMaxValChanged(0);
-    spdlog::info("Getting files in path: {}", m_path.toStdString());
-    auto kFiles = KLM::getKaraokeFiles(m_path);
-    spdlog::info("Found {} karaoke files, calculating crc32 checksums", kFiles.size());
+    KLM::KaraokeFileList kFiles;
+    for ( auto path : m_paths )
+    {
+        spdlog::info("Getting files in path: {}", path->path().toStdString());
+        kFiles.append(path->files());
+        spdlog::info("Found {} karaoke files", path->files().size());
+    }
+    spdlog::info("Found a totoal of {} karaoke files in all paths, calculating crc32 checksums", kFiles.size());
     emit newStepStarted("Calculating crc32 checksums");
     emit stepMaxValChanged(kFiles.size());
     int processedFiles{0};

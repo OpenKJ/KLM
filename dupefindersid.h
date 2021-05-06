@@ -4,17 +4,17 @@
 #include <QObject>
 #include <vector>
 #include "karaokefile.h"
-#include <memory>
 
 class DupeFinderSID : public QObject
 {
     Q_OBJECT
-    QString m_path;
+    KLM::KaraokePathList m_paths;
     
 public:
     explicit DupeFinderSID(QObject *parent = nullptr);
     void findDupes();
-    void setPath(const QString &path);
+    void setPaths(KLM::KaraokePathList paths);
+
 
 signals:
     void finished();

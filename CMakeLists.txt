@@ -355,6 +355,8 @@ add_executable(klm
         dupefinderat.h
         dupefindersid.cpp
         dupefindersid.h
+        tablemodelpaths.h
+        tablemodelpaths.cpp
         qcrc32.cpp
         qcrc32.h
         images.qrc

@@ -13,6 +13,7 @@
 #include <utility>
 #include "qcrc32.h"
 
+Q_DECLARE_METATYPE(NamingPattern);
 
 uint32_t KaraokeFile::crc() {
     if (!m_fileScanned)
@@ -153,17 +154,22 @@ void KaraokeFile::applyNamingPattern() {
 void KaraokeFile::setNamingPattern(const NamingPattern &pattern) {
     m_namingPattern = pattern;
     applyNamingPattern();
+    QSettings settings;
 }
 
 
-KaraokeFile::KaraokeFile(QString path, QObject *parent) : QObject(parent), m_path(std::move(path)) {
+KaraokeFile::KaraokeFile(QString path, NamingPattern pattern, QObject *parent) :
+    QObject(parent),
+    m_path(std::move(path)),
+    m_namingPattern(std::move(pattern))
+{
     if (m_path.endsWith("zip", Qt::CaseInsensitive))
         m_procMode = ProcessingMode::AudioGZip;
     else if (m_path.endsWith("cdg", Qt::CaseInsensitive))
         m_procMode = ProcessingMode::AudioG;
     else
         m_procMode = ProcessingMode::VideoFile;
-    applyNamingPattern();
+    applyNamingPattern();    
 }
 
 void KaraokeFile::scanCdgFile() {
@@ -255,3 +261,36 @@ QString KaraokeFile::findAudioFileForCdg(const QString& cdgFilePath) {
     return QString();
 }
 
+
+const QString &KaraokePath::path() const
+{
+    return m_path;
+}
+
+const NamingPattern &KaraokePath::pattern() const
+{
+    return m_pattern;
+}
+
+void KaraokePath::setPattern(const NamingPattern &newPattern)
+{
+    m_pattern = newPattern;
+    for (auto file : files())
+    {
+        file->setNamingPattern(newPattern);
+    }
+}
+
+KaraokePath::KaraokePath(QString path, NamingPattern pattern, QObject *parent) :
+    QObject(parent),
+    m_path(std::move(path)),
+    m_pattern(std::move(pattern))
+{
+
+}
+
+KLM::KaraokeFileList &KaraokePath::files(const bool forceRefresh) {
+    if (m_files.isEmpty() || forceRefresh)
+        m_files = KLM::getKaraokeFiles(m_path, m_pattern);
+    return m_files;
+}
