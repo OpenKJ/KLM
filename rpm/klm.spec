@@ -1,13 +1,13 @@
 %define _unpackaged_files_terminate_build 0
 
 Name:           klm
-Version:		0.9.1
+Version:		1.9.2
 Release:        1%{?dist}
 Summary:        OpenKJ karaoke library manager
 
 License:        GPL
 URL:            https://openkj.org
-Source0:	https://github.com/ILightburn/KLM/releases/download/v0.9.1/klm-0.9.1.tar.gz
+Source0:	https://github.com/ILightburn/KLM/releases/download/v1.9.2/klm-1.9.2.tar.gz
 
 BuildRequires:  cmake qt5-qtbase-devel zlib-devel git
 Requires:       qt5-qtbase zlib
