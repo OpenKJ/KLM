@@ -334,7 +334,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(QT NAMES Qt6 Qt5 COMPONENTS Widgets REQUIRED)
-find_package(Qt${QT_VERSION_MAJOR} COMPONENTS Widgets REQUIRED)
+find_package(Qt${QT_VERSION_MAJOR} COMPONENTS Widgets Concurrent REQUIRED)
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
     set(WINDOWS_RC_ICON
@@ -366,7 +366,7 @@ add_executable(klm
         ${ZLIB_SOURCES}
         )
 
-target_link_libraries(klm PRIVATE Qt${QT_VERSION_MAJOR}::Widgets spdlog::spdlog_header_only)
+target_link_libraries(klm PRIVATE Qt${QT_VERSION_MAJOR}::Widgets Qt${QT_VERSION_MAJOR}::Concurrent spdlog::spdlog_header_only)
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
     set_property(
